@@ -1,5 +1,5 @@
 ---
-title: "india_failure_combined"
+title: "india_Failure_combined"
 author: "avanvalken"
 date: "6/4/2021"
 output:
@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
   library(edgeR)
   library(sva)
   library(SingleCellExperiment)
-  #library(singleCellTK)
+  library(singleCellTK)
   library(DESeq2)
   library(TBSignatureProfiler)
   library(DT)
@@ -42,7 +42,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 # Load data
 ```{r}
-indata <- readRDS("india_se.RDS")
+indata <- readRDS("data_processed/india_se.RDS")
 
 # Want to have 5% present rate
 indata <- indata[apply(assay(indata,"counts") != 0, 1, mean)>.2,] 
@@ -50,33 +50,33 @@ indata <- indata[apply(assay(indata,"counts") != 0, 1, mean)>.2,]
 # removing outlier based on PCA
 indata <- indata[,-which(colnames(indata) %in% c("10200107A0"))]
 
-
+colData(indata)$subjtype <- gsub("failure", "Failure", colData(indata)$subjtype)
 colData(indata)$subjtype <- as.factor(colData(indata)$subjtype)
 colData(indata)$batch <- as.factor(colData(indata)$batch)
 colData(indata)$visit <- as.factor(colData(indata)$visit)
 colData(indata)$visit_type <- as.factor(paste(colData(indata)$visit, colData(indata)$subjtype, sep = "_"))
 ```
 
+
 # Batch correct
 
 ## UMAP of uncorrected data
 ```{r}
-#assays(indata)
-#indata <- mkAssay(indata,  log = TRUE)
+assays(indata)
+indata_tmp <- mkAssay(indata,  log = TRUE)
+names(assays(indata_tmp)) <- c("counts", "log_counts", "cpm", "log_cpm")
 
+assay_type = "log_cpm"
 
-#assay_type = "log_counts"
-
-assay_type = "counts"
 
 set.seed(1)
-umap_out <- umap(t(assay(indata,assay_type)))
+umap_out <- umap(t(assay(indata_tmp,assay_type)))
 embedding <- as.data.frame(umap_out$layout)
-embedding$Class <- as.factor(indata$subjtype)
-embedding$batch <- as.factor(indata$batch)
+embedding$Class <- as.factor(indata_tmp$subjtype)
+embedding$batch <- as.factor(indata_tmp$batch)
 
-g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colnames(assay(indata, assay_type)))) + 
-  geom_point(size=1.5) + 
+g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colnames(assay(indata_tmp, assay_type)))) + 
+  geom_point(size=3) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
   theme(plot.title = element_text(hjust = 0.5)) + 
@@ -84,24 +84,33 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colna
  #geom_text(aes(label=rownames(embedding), label.size = 0.10),hjust=0, vjust=0)
 
 plot(g)
-#ggsave("tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
+ggsave("outs/dimension_reduction/tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
+ggsave("outs/dimension_reduction/tb_fail_umap_log_counts_pre-batch-corrected.svg", width=7, height=7)
+
+# remove temporary object
+rm(indata_tmp)
 ```
+
 ## Batch correct on subjid and subjtype
-
-separate based on time
-
 ```{r}
+# matrix formula using visit and treatment status as cofactors
 modcombat <- model.matrix(~  as.factor(colData(indata)$visit) + colData(indata)$subjtype)
 
+# correct for batch effects
 combined_India.combatSeqCorrect <- ComBat_seq(assay(indata, "counts"),
                                       colData(indata)$batch, group=NULL,
                                       covar_mod=modcombat)
 
+# add batch corrected assay to indata
 assay(indata, "combatseq") <- combined_India.combatSeqCorrect
 assays(indata)
-indata <- mkAssay(indata, input_name = "combatseq", log = TRUE)
-names(assays(indata)) <- c("counts", "combatseq", "log_counts", "cpm", "log_cpm")
 
+# make log_counts/logcpm
+indata <- mkAssay(indata, input_name = "combatseq", log = TRUE)
+names(assays(indata)) # check names
+names(assays(indata)) <- c("counts", "combatseq", "log_counts", "cpm", "log_cpm") # rename assays for convenience
+
+# remove for memory
 rm(modcombat, combined_India.combatSeqCorrect)
 ```
 
@@ -130,13 +139,15 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch,label = colnam
 
 plot(g)
 
-ggsave("tb_fail_umap_log_counts_post-batch-corrected.png", width=7, height=7)
+ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected.png", width=7, height=7)
+ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected.svg", width=7, height=7)
 ```
 
 # Add duplicates together for 1 batch
 
 ## Combine duplicates
 ```{r}
+
 df <- as.data.frame(colData(indata))
 mat <- as.matrix(assay(indata, "combatseq"))
 
@@ -194,10 +205,10 @@ indata <-  mkAssay(indata, log = TRUE)# this is the new indata object
 names(assays(indata)) <- c("counts", "log_counts", "cpm", "log_cpm")
 ## extract CPM for CIBERSORT
 
-# cpm_failure <- assay(indata, "cpm", withDimnames = TRUE)
+# cpm_Failure <- assay(indata, "cpm", withDimnames = TRUE)
 # 
-# outCibersort <- cbind(data.frame(GeneSymbol = row.names(cpm_failure)), 
-#                      cpm_failure)
+# outCibersort <- cbind(data.frame(GeneSymbol = row.names(cpm_Failure)), 
+#                      cpm_Failure)
 # row.names(outCibersort) <- NULL
 # head(outCibersort)
 # write.table(outCibersort, 
@@ -227,73 +238,13 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colna
  #geom_text(aes(label=rownames(embedding), label.size = 0.10),hjust=0, vjust=0)
 
 plot(g)
+ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected_combined_duplicates.svg", width=7, height=7)
 ```
 
-## graph of correlation between totmiss and control/failure
-
-```{r totmiss-dotplot}
-
-### I don't think this is right- totmiss calculation?
-
-df <- as.data.frame(colData(indata))
-
-zf <- subset(df, visit == "Month 2")
-bf <- subset(df, visit == "Baseline")
-
-zf$totmiss[zf$FUA_TXCOMP=="Never skips medication"] <- 0
 
 
-# plot for month 2 with totmiss by subjtype
-g <- ggplot(data=zf, mapping = aes(subjtype, totmiss, color=subjtype)) + 
-  geom_point() +
-  geom_jitter()
-g
-
-
-knitr::kable(table(zf[,c("subjtype", "totmiss")]))
-#knitr::kable(table(bf[,c("subjtype", "totmiss")]))
-
-
-```
-
-<!-- ## Remove those who missed treatments -->
-<!-- ```{r} -->
-<!-- missed_subjid <- zf %>% mutate(new_miss = rowSums(zf[,c("FUA_DOSES30", "FUA_DOSES7", "totmiss")])) -->
-
-<!-- missed <- missed_subjid[which(missed_subjid$new_miss > 0), "subjid"] -->
-<!-- missed_baseline <- gsub("A2", "A0", missed) -->
-
-<!-- missed <- c(missed, missed_baseline) -->
-
-<!-- indata <- indata[,!(colData(indata)$subjid %in% missed)] -->
-<!-- ``` -->
-
-
-## UMAP on adjusted data
-
-```{r umap-all-adjusted}
-assay_type = "log_cpm"
-
-set.seed(1)
-umap_out <- umap(t(assay(indata,assay_type)))
-
-embedding <- as.data.frame(umap_out$layout)
-embedding$Class <- as.factor(indata$subjtype)
-embedding$batch <- as.factor(indata$batch)
-
-g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colnames(assay(indata, assay_type)))) + 
-  geom_point(size=1.5) + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  ggtitle("UMAP Plot") #+ 
- #geom_text(aes(label=rownames(embedding), label.size = 0.10),hjust=0, vjust=0)
-
-plot(g)
-```
-
-# Prediction who fails at base line
-## Dimension Reduction failures and controls of baseline
+# Prediction who fails at baseline
+## Dimension Reduction Failures and controls of baseline
 
 ### PCA  {.tabset}
 Using the DESeq object and PCAplot function on the ComBat corrected data
@@ -301,48 +252,6 @@ Using the DESeq object and PCAplot function on the ComBat corrected data
 
 
 ```{r base-pca}
-sctkplotPCA <- function (inSCE, colorBy = NULL, shape = NULL, pcX = "PC1", 
-  pcY = "PC2", reducedDimName = "PCA", runPCA = FALSE, useAssay = "logcounts") 
-{
-  if (!(reducedDimName %in% names(SingleCellExperiment::reducedDims(inSCE)))) {
-    if (runPCA) {
-      inSCE <- scaterPCA(inSCE, useAssay = useAssay, reducedDimName = reducedDimName)
-    }
-    else {
-      stop(reducedDimName, " dimension not found. Run scaterPCA() or set runPCA to TRUE.")
-    }
-  }
-  pcaDf <- data.frame(SingleCellExperiment::reducedDim(inSCE, 
-    reducedDimName))
-  if (!(pcX %in% colnames(pcaDf))) {
-    stop("pcX dimension ", pcX, " is not in the reducedDim data")
-  }
-  if (!(pcY %in% colnames(pcaDf))) {
-    stop("pcY dimension ", pcY, " is not in the reducedDim data")
-  }
-  pcXlab <- pcX
-  pcYlab <- pcY
-  if (!is.null(colorBy)) {
-    pcaDf$color <- SingleCellExperiment::colData(inSCE)[, 
-      colorBy]
-  }
-  if (!is.null(shape)) {
-    pcaDf$shape <- factor(SingleCellExperiment::colData(inSCE)[, 
-      shape])
-  }
-  pcaDf$Sample <- colnames(inSCE)
-  g <- ggplot2::ggplot(pcaDf, ggplot2::aes_string(pcX, pcY, 
-    label = "Sample")) + ggplot2::geom_point() + ggplot2::labs(x = pcXlab, 
-    y = pcYlab)
-  if (!is.null(colorBy)) {
-    g <- g + ggplot2::aes_string(color = "color") + ggplot2::labs(color = colorBy)
-  }
-  if (!is.null(shape)) {
-    g <- g + ggplot2::aes_string(shape = "shape") + ggplot2::labs(shape = shape)
-  }
-  return(g)
-}
-
 
 indata_base = indata[,colData(indata)$visit=="Baseline"]
 #indata_m2 = indata[,colData(indata)$visit == "Month 2"]
@@ -360,11 +269,11 @@ indata_tmp2 <- as(indata_tmp, "SingleCellExperiment")
 
 
 # need to install "scater" package
-# g <- singleCellTK::plotPCA(indata_tmp2, colorBy = "subjtype", useAssay = "counts", runPCA = TRUE)
+g <- singleCellTK::plotPCA(indata_tmp2, colorBy = "subjtype", useAssay = "counts", runPCA = TRUE)
 
-# 
-# g <- g + geom_point(size = .5) + ggtitle("PCA Baseline")
-# g
+
+g <- g + geom_point(size = .5) + ggtitle("PCA Baseline")
+g
 
 # svg(filename = "base_pca_mdx_included.svg", width = 4, height = 4, pointsize = 5)
 # g
@@ -429,7 +338,7 @@ head(designMat)
 
 fit <- lmFit(assay(indata_base, "log_cpm"), designMat)
 
-# Difference in expression between failures and controls 
+# Difference in expression between Failures and controls 
 
 contrast.matrixNut<- makeContrasts(Failure, levels = designMat)
 fitNut <- contrasts.fit(fit,contrast.matrixNut)
@@ -492,7 +401,7 @@ df=data.frame(Outcome=colData(indata_base)$"subjtype")
 #o1 = seriate(dist(mat), method = "TSP")
 #o2 = seriate(dist(t(mat)), method = "TSP")
 
-ha = HeatmapAnnotation(df = df, col = list(Outcome=c("failure"="Red","Control"="Blue")))
+ha = HeatmapAnnotation(df = df, col = list(Outcome=c("Failure"="Red","Control"="Blue")))
 
 g <- Heatmap(mat,show_row_names=F,show_column_names = F, top_annotation = ha, cluster_columns = T )
 
@@ -578,13 +487,13 @@ ssgsea_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algori
                                signatures = select_tbsignatures, parallel.sz = 4)
 
 
-colData(ssgsea_res_select)$visit_type <- gsub("failure", "Failure", colData(ssgsea_res_select)$visit_type)
-colData(ssgsea_res_select.bl)$visit_type <- gsub("failure", "Failure", colData(ssgsea_res_select.bl)$visit_type)
-colData(ssgsea_res_select.m2)$visit_type <- gsub("failure", "Failure", colData(ssgsea_res_select.m2)$visit_type)
+colData(ssgsea_res_select)$visit_type <- gsub("Failure", "Failure", colData(ssgsea_res_select)$visit_type)
+colData(ssgsea_res_select.bl)$visit_type <- gsub("Failure", "Failure", colData(ssgsea_res_select.bl)$visit_type)
+colData(ssgsea_res_select.m2)$visit_type <- gsub("Failure", "Failure", colData(ssgsea_res_select.m2)$visit_type)
 
-colData(ssgsea_res_select)$subjtype <- gsub("failure", "Failure", colData(ssgsea_res_select)$subjtype)
-colData(ssgsea_res_select.bl)$subjtype <- gsub("failure", "Failure", colData(ssgsea_res_select.bl)$subjtype)
-colData(ssgsea_res_select.m2)$subjtype <- gsub("failure", "Failure", colData(ssgsea_res_select.m2)$subjtype)
+colData(ssgsea_res_select)$subjtype <- gsub("Failure", "Failure", colData(ssgsea_res_select)$subjtype)
+colData(ssgsea_res_select.bl)$subjtype <- gsub("Failure", "Failure", colData(ssgsea_res_select.bl)$subjtype)
+colData(ssgsea_res_select.m2)$subjtype <- gsub("Failure", "Failure", colData(ssgsea_res_select.m2)$subjtype)
 
 
 #png("ssgsea_selectsig_boxplot_bl.png", width = 6.5, pointsize = 8)
@@ -867,7 +776,7 @@ quants <- quantile(sds,c(0.015738 ,0.027426 ,0.037734 ))
 
 ### Calculate power
 
-#21 controls 20 failures
+#21 controls 20 Failures
 sample_size=10
 alp = 0.0001
 
@@ -1112,7 +1021,7 @@ for (i in names(samp_tbsignatures)){
 
 
 # Prediction who fails at 2 months
-## Dimension Reduction failures and controls at 2 months 
+## Dimension Reduction Failures and controls at 2 months 
 
 ### PCA  {.tabset}
 Using the DESeq object and PCAplot function on the ComBat corrected data
@@ -1199,7 +1108,7 @@ head(designMat)
 
 fit <- lmFit(assay(indata_m2, "log_cpm"), designMat)
 
-# Difference in expression between failures and controls 
+# Difference in expression between Failures and controls 
 
 contrast.matrixNut<- makeContrasts(Failure, levels = designMat)
 fitNut <- contrasts.fit(fit,contrast.matrixNut)
@@ -1259,7 +1168,7 @@ df=data.frame(Outcome=colData(indata_m2)$"subjtype")
 #o1 = seriate(dist(mat), method = "TSP")
 #o2 = seriate(dist(t(mat)), method = "TSP")
 
-ha = HeatmapAnnotation(df = df, col = list(Outcome=c("failure"="Red","Control"="Blue")))
+ha = HeatmapAnnotation(df = df, col = list(Outcome=c("Failure"="Red","Control"="Blue")))
 
 g <- Heatmap(mat,show_row_names=F,show_column_names = F, top_annotation = ha, cluster_columns = T )
 
@@ -2219,7 +2128,7 @@ head(designMat)
 
 fit <- lmFit(assay(indata_base, "log_cpm"), designMat)
 
-# Difference in expression between failures and controls 
+# Difference in expression between Failures and controls 
 
 contrast.matrixNut<- makeContrasts(Control, levels = designMat)
 fitNut <- contrasts.fit(fit,contrast.matrixNut)
@@ -2280,7 +2189,7 @@ df=data.frame(Outcome=colData(indata_base)$"subjtype")
 #o1 = seriate(dist(mat), method = "TSP")
 #o2 = seriate(dist(t(mat)), method = "TSP")
 
-ha = HeatmapAnnotation(df = df, col = list(Outcome=c("failure"="Red","Control"="Blue")))
+ha = HeatmapAnnotation(df = df, col = list(Outcome=c("Failure"="Red","Control"="Blue")))
 
 Heatmap(mat,show_row_names=F,show_column_names = F, top_annotation = ha, cluster_columns = T )
 ```
