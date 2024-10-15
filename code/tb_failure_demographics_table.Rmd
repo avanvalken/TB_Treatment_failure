@@ -1,0 +1,688 @@
+---
+title: "Demographics analysis"
+author: "avanvalken"
+date: "3/18/2021"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+library(RODBC)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# load data, mxdx
+```{r}
+
+df <- read_csv("tb_failure_subjdata.csv")
+# 1=Male, 2=Female
+
+dta <- odbcConnectAccess2007("20210326_Indo-US VAP.accdb")   #specifies the file path
+
+
+
+# match sex data in df
+
+df$sex <- gsub( "1","Male", df$sex)
+df$sex <- gsub("2", "Female", df$sex)
+
+
+
+```
+# clean data
+```{r}
+# get rid of space 
+df$sex <- gsub(" ", "", df$sex)
+df$sex <- as.character(df$sex)
+
+df$IC_DMDX<- gsub(" ", "", df$IC_DMDX)
+
+# subset into SM and Controls
+df.bl <- subset(df, visit=="Baseline")
+df.m2 <- subset(df, visit=="Month 2")
+df.fail.bl <- subset(df.bl, subjtype=="failure")
+df.con.bl <- subset(df.bl, subjtype=="Control")
+df.fail.m2 <- subset(df.m2, subjtype=="failure")
+df.con.m2 <- subset(df.m2, subjtype=="Control")
+
+# get subject_id as vector
+subjid <- df$subjid
+subjid <- gsub("A0", "A", subjid)
+subjid <- gsub("A2", "A", subjid)
+
+subjid <- unique(subjid)
+
+
+```
+
+# BMI
+```{r}
+df.1A_ICScreening<- sqlFetch(dta, "1A_ICScreening") ## male/female/age
+df.1A_ICScreening<-filter(df.1A_ICScreening, SUBJID %in% subjid)
+
+
+
+df.2A_ICBaseline<- sqlFetch(dta, "2A_ICBaseline")
+df.2A_ICBaseline<-filter(df.2A_ICBaseline, SUBJID %in% subjid)
+
+# select subjid, height, and weight
+ic_select <- c("SUBJID", "IC_ALCDOSTX","IC_ALCFRQ", "IC_ALCUSE", "IC_SMOKHX" ,"IC_WEIGHT", "IC_HEIGHT", "IC_RBS", "IC_DMDX" )
+
+df.2A_ICBaseline <- select_if(df.2A_ICBaseline, colnames(df.2A_ICBaseline) %in% ic_select)
+
+# calculate BMI
+bmi <- df.2A_ICBaseline %>% 
+  mutate(BMI = IC_WEIGHT/(IC_HEIGHT/100)^2)
+
+
+
+```
+
+# age stats
+```{r}
+#baseline
+# total ranges and medians
+age_total_range.bl <- range(df.bl$age) 
+age_total_median.bl <- median(df.bl$age) 
+
+age_fail_range.bl <-range(df.fail.bl$age) 
+age_fail_median.bl <- median(df.fail.bl$age) 
+
+age_con_range.bl <-range(df.con.bl$age) 
+age_con_median.bl <- median(df.con.bl$age) 
+
+
+# test for variance
+var.test(age ~ subjtype, data=df.bl) # p-value= 0.8196;  good enough to consider the same, using Welch's t-test 
+
+# Welch 2-sample t-test; variances unequal;
+test.bl <- t.test(age ~ subjtype,
+  data = df.bl,
+  var.equal = TRUE,
+  alternative = "two.sided"
+)
+test.bl$p.value 
+
+
+# Month 2
+age_total_range.m2 <- range(df.m2$age) 
+age_total_median.m2 <- median(df.m2$age) 
+
+age_fail_range.m2 <-range(df.fail.m2$age) 
+age_fail_median.m2 <- median(df.fail.m2$age) 
+
+age_con_range.m2 <-range(df.con.m2$age) 
+age_con_median.m2 <- median(df.con.m2$age) 
+
+
+# test for variance
+var.test(age ~ subjtype, data=df.m2) # p-value= 0.9193;  good enough to consider the same, using Welch's t-test 
+
+# Welch 2-sample t-test; variances unequal;
+test.m2 <- t.test(age ~ subjtype,
+  data = df.m2,
+  var.equal = TRUE,
+  alternative = "two.sided"
+)
+test.m2$p.value 
+
+
+
+demotable_age <- data.frame(age_total_range.bl,
+                            age_total_median.bl,
+                            age_fail_range.bl,
+                            age_fail_median.bl,
+                            age_con_range.bl,
+                            age_con_median.bl,
+                            test.bl$p.value,
+                            
+                            age_total_range.m2,
+                            age_total_median.m2,
+                            age_fail_range.m2,
+                            age_fail_median.m2,
+                            age_con_range.m2,
+                            age_con_median.m2,
+                            test.m2$p.value)
+
+```
+
+# sex stats
+```{r}
+# total
+
+#baseline total
+sum_total_m.bl <- sum(df.bl$sex=="Male") 
+sum_total_f.bl <- sum(df.bl$sex=="Female") 
+## percentage male/female
+percent_total_m.bl <- mean(df.bl$sex=="Male") 
+percent_total_f.bl <- mean(df.bl$sex=="Female") #
+
+# failures.bl
+sum_fail_m.bl <- sum(df.fail.bl$sex=="Male")
+sum_fail_f.bl <- sum(df.fail.bl$sex=="Female")
+
+# controls.bl
+sum_con_m.bl <- sum(df.con.bl$sex=="Male")
+sum_con_f.bl <- sum(df.con.bl$sex=="Female") 
+
+## percentage male/female
+percent_fail_m.bl <- mean(df.fail.bl$sex=="Male") 
+percent_fail_f.bl <- mean(df.fail.bl$sex=="Female")
+percent_con_m.bl <- mean(df.con.bl$sex=="Male") 
+percent_con_f.bl <- mean(df.con.bl$sex=="Female")
+
+# Month 2
+
+#m2 total
+sum_total_m.m2 <- sum(df.m2$sex=="Male") 
+sum_total_f.m2 <- sum(df.m2$sex=="Female") 
+## percentage male/female
+percent_total_m.m2 <- mean(df.m2$sex=="Male") 
+percent_total_f.m2 <- mean(df.m2$sex=="Female") #
+
+# failures.m2
+sum_fail_m.m2 <- sum(df.fail.m2$sex=="Male")
+sum_fail_f.m2 <- sum(df.fail.m2$sex=="Female")
+
+# controls.m2
+sum_con_m.m2 <- sum(df.con.m2$sex=="Male")
+sum_con_f.m2 <- sum(df.con.m2$sex=="Female") 
+
+## percentage male/female
+percent_fail_m.m2 <- mean(df.fail.m2$sex=="Male") 
+percent_fail_f.m2 <- mean(df.fail.m2$sex=="Female")
+percent_con_m.m2 <- mean(df.con.m2$sex=="Male") 
+percent_con_f.m2 <- mean(df.con.m2$sex=="Female")
+
+
+
+
+# 2-sample test for equality of proportions with continuity correction
+# f_table is proportion matrix, (Xnvar, Xntot, Ynvar, Yntot)
+
+
+# baseline difference in males, fisher proportions
+f_table <- matrix(c(sum_fail_m.bl, 
+                    (sum_fail_f.bl+ sum_fail_m.bl),
+                    sum_con_m.bl,
+                    (sum_con_f.bl + sum_con_m.bl)),ncol=2)
+sex_m_test.bl <- fisher.test(x = f_table, alternative = 'two.sided')
+sex_m_test.bl$p.value
+
+# baseline difference in females, fisher proportions
+f_table <- matrix(c(sum_fail_f.bl, 
+                    (sum_fail_f.bl+ sum_fail_m.bl),
+                    sum_con_f.bl,
+                    (sum_con_f.bl + sum_con_m.bl)),ncol=2)
+sex_f_test.bl <- fisher.test(x = f_table, alternative = 'two.sided')
+sex_f_test.bl$p.value
+
+# month 2 difference in males, fisher proportions
+f_table <- matrix(c(sum_fail_m.m2, 
+                    (sum_fail_f.m2+ sum_fail_m.m2),
+                    sum_con_m.m2,
+                    (sum_con_f.m2 + sum_con_m.m2)),ncol=2)
+sex_m_test.m2 <- fisher.test(x = f_table, alternative = 'two.sided')
+sex_m_test.m2$p.value
+
+# difference in females, fisher proportions
+f_table <- matrix(c(sum_fail_f.m2, 
+                    (sum_fail_f.m2+ sum_fail_m.m2),
+                    sum_con_f.m2,
+                    (sum_con_f.m2 + sum_con_m.m2)),ncol=2)
+sex_f_test.m2 <- fisher.test(x = f_table, alternative = 'two.sided')
+sex_f_test.m2$p.value
+
+demotable_sex <- data.frame(sum_total_f.bl, 
+                        percent_total_f.bl, 
+                        sum_total_m.bl, 
+                        percent_total_m.bl, 
+                        sum_con_m.bl, 
+                        sum_con_f.bl, 
+                        percent_con_f.bl, 
+                        sum_fail_f.bl, 
+                        percent_fail_f.bl, 
+                        sum_fail_m.bl, 
+                        percent_fail_m.bl,
+                        sex_m_test.bl$p.value,
+                        sex_f_test.bl$p.value,
+                        percent_total_f.m2, 
+                        sum_total_m.m2, 
+                        percent_total_m.m2, 
+                        sum_con_m.m2, 
+                        sum_con_f.m2, 
+                        percent_con_f.m2, 
+                        sum_fail_f.m2, 
+                        percent_fail_f.m2, 
+                        sum_fail_m.m2, 
+                        percent_fail_m.m2,
+                        sex_m_test.m2$p.value,
+                        sex_f_test.m2$p.value
+                        )
+
+demotable_sex
+
+```
+
+# alcohol
+```{r}
+
+# baseline total
+## total 
+alc_total_1.bl <- sum(df.bl$riskyalc == 1) 
+alc_total_0.bl <- sum(df.bl$riskyalc == 0) 
+
+percent_alc_total_1.bl <- mean(df.bl$riskyalc == 1) 
+percent_alc_total_0.bl <-mean(df.bl$riskyalc == 0) 
+
+
+## failures 
+alc_fail_1.bl <- sum(df.fail.bl$riskyalc == 1) 
+alc_fail_0.bl <- sum(df.fail.bl$riskyalc == 0) 
+
+percent_alc_fail_1.bl <- mean(df.fail.bl$riskyalc == 1) 
+percent_alc_fail_0.bl <-mean(df.fail.bl$riskyalc == 0) 
+
+
+## Control
+alc_con_1.bl <- sum(df.con.bl$riskyalc == 1) 
+alc_con_0.bl <- sum(df.con.bl$riskyalc == 0) 
+
+percent_alc_con_1.bl <- mean(df.con.bl$riskyalc == 1) 
+percent_alc_con_0.bl <-mean(df.con.bl$riskyalc == 0) 
+
+# Month 2
+
+## total 
+alc_total_1.m2 <- sum(df.m2$riskyalc == 1) 
+alc_total_0.m2 <- sum(df.m2$riskyalc == 0) 
+
+percent_alc_total_1.m2 <- mean(df.m2$riskyalc == 1) 
+percent_alc_total_0.m2 <-mean(df.m2$riskyalc == 0) 
+
+
+## failures 
+alc_fail_1.m2 <- sum(df.fail.m2$riskyalc == 1) 
+alc_fail_0.m2 <- sum(df.fail.m2$riskyalc == 0) 
+
+percent_alc_fail_1.m2 <- mean(df.fail.m2$riskyalc == 1) 
+percent_alc_fail_0.m2 <-mean(df.fail.m2$riskyalc == 0) 
+
+
+## Control
+alc_con_1.m2 <- sum(df.con.m2$riskyalc == 1) 
+alc_con_0.m2 <- sum(df.con.m2$riskyalc == 0) 
+
+percent_alc_con_1.m2 <- mean(df.con.m2$riskyalc == 1) 
+percent_alc_con_0.m2 <-mean(df.con.m2$riskyalc == 0) 
+
+
+# 2-sample test for equality of proportions with continuity correction
+# f_table is proportion matrix, (Xnvar, Xntot, Ynvar, Yntot)
+
+
+# baseline difference in males, fisher proportions
+f_table <- matrix(c(alc_fail_1.bl, 
+                    (alc_fail_1.bl+ alc_fail_0.bl),
+                    alc_con_1.bl,
+                    (alc_con_1.bl + alc_con_0.bl)),ncol=2)
+alc_test.bl <- fisher.test(x = f_table, alternative = 'two.sided')
+alc_test.bl$p.value
+
+
+
+# month 2 difference in males, fisher proportions
+f_table <- matrix(c(alc_fail_1.m2, 
+                    (alc_fail_1.m2+ alc_fail_0.m2),
+                    alc_con_1.m2,
+                    (alc_con_1.m2 + alc_con_0.m2)),ncol=2)
+alc_test.m2 <- fisher.test(x = f_table, alternative = 'two.sided')
+alc_test.m2$p.value
+
+
+
+demotable_alc <- data.frame(alc_total_1.bl, 
+                        percent_alc_total_1.bl, 
+                        alc_total_0.bl, 
+                        percent_alc_total_0.bl, 
+                        alc_con_1.bl, 
+                        percent_alc_con_1.bl,
+                        alc_con_0.bl, 
+                        percent_alc_con_0.bl, 
+                        alc_fail_1.bl, 
+                        percent_alc_fail_1.bl,
+                        alc_fail_0.bl, 
+                        percent_alc_fail_0.bl, 
+                        alc_test.bl$p.value,
+                        
+                        
+                        alc_total_1.m2, 
+                        percent_alc_total_1.m2, 
+                        alc_total_0.m2, 
+                        percent_alc_total_0.m2, 
+                        alc_con_1.m2, 
+                        percent_alc_con_1.m2,
+                        alc_con_0.m2, 
+                        percent_alc_con_0.m2, 
+                        alc_fail_1.m2, 
+                        percent_alc_fail_1.m2,
+                        alc_fail_0.m2, 
+                        percent_alc_fail_0.m2, 
+                        alc_test.m2$p.value
+                        )
+demotable_alc
+```
+
+
+
+# smoking 
+```{r}
+# baseline total
+## total 
+smk_totaly.bl <- nrow(df.bl[(grep("Yes" ,df.bl$IC_SMOKHX)),]) 
+smk_totaln.bl <- nrow(df.bl[(grep("No" ,df.bl$IC_SMOKHX)),])
+
+percent_smk_totaly.bl <- mean(grepl("Yes",df.bl$IC_SMOKHX)) 
+percent_smk_totaln.bl <- mean(grepl("No",df.bl$IC_SMOKHX))  
+
+
+## failures 
+smk_faily.bl <- nrow(df.fail.bl[(grep("Yes" , df.fail.bl$IC_SMOKHX)),])  
+smk_failn.bl <- nrow(df.fail.bl[(grep("No" , df.fail.bl$IC_SMOKHX)),]) 
+
+percent_smk_faily.bl <- mean(grepl("Yes",df.fail.bl$IC_SMOKHX)) 
+percent_smk_failn.bl <- mean(grepl("No",df.fail.bl$IC_SMOKHX)) 
+
+
+## Control
+smk_cony.bl <- nrow(df.con.bl[(grep("Yes" , df.con.bl$IC_SMOKHX)),])  
+smk_conn.bl <- nrow(df.con.bl[(grep("No" , df.con.bl$IC_SMOKHX)),]) 
+
+percent_smk_cony.bl <- mean(grepl("Yes",df.con.bl$IC_SMOKHX)) 
+percent_smk_conn.bl <- mean(grepl("No",df.con.bl$IC_SMOKHX)) 
+
+# Month 2
+
+## total 
+smk_totaly.m2 <- nrow(df.m2[(grep("Yes" ,df.m2$IC_SMOKHX)),]) 
+smk_totaln.m2 <- nrow(df.m2[(grep("No" ,df.m2$IC_SMOKHX)),])
+
+percent_smk_totaly.m2 <- mean(grepl("Yes",df.m2$IC_SMOKHX)) 
+percent_smk_totaln.m2 <- mean(grepl("No",df.m2$IC_SMOKHX))  
+
+
+## failures 
+smk_faily.m2 <- nrow(df.fail.m2[(grep("Yes" , df.fail.m2$IC_SMOKHX)),])  
+smk_failn.m2 <- nrow(df.fail.m2[(grep("No" , df.fail.m2$IC_SMOKHX)),]) 
+
+percent_smk_faily.m2 <- mean(grepl("Yes",df.fail.m2$IC_SMOKHX)) 
+percent_smk_failn.m2 <- mean(grepl("No",df.fail.m2$IC_SMOKHX)) 
+
+
+## Control
+smk_cony.m2 <- nrow(df.con.m2[(grep("Yes" , df.con.m2$IC_SMOKHX)),])  
+smk_conn.m2 <- nrow(df.con.m2[(grep("No" , df.con.m2$IC_SMOKHX)),]) 
+
+percent_smk_cony.m2 <- mean(grepl("Yes",df.con.m2$IC_SMOKHX)) 
+percent_smk_conn.m2 <- mean(grepl("No",df.con.m2$IC_SMOKHX)) 
+
+# 2-sample test for equality of proportions with continuity correction
+# f_table is proportion matrix, (Xnvar, Xntot, Ynvar, Yntot)
+
+
+# baseline difference in males, fisher proportions
+f_table <- matrix(c(smk_faily.bl, 
+                    (smk_faily.bl+ smk_failn.bl),
+                    smk_cony.bl,
+                    (smk_cony.bl + smk_conn.bl)),ncol=2)
+smk_test.bl <- fisher.test(x = f_table, alternative = 'two.sided')
+smk_test.bl$p.value
+
+
+
+# month 2 difference in males, fisher proportions
+f_table <- matrix(c(smk_faily.m2, 
+                    (smk_faily.m2+ smk_failn.m2),
+                    smk_cony.m2,
+                    (smk_cony.m2 + smk_conn.m2)),ncol=2)
+smk_test.m2 <- fisher.test(x = f_table, alternative = 'two.sided')
+smk_test.m2$p.value
+
+
+
+demotable_smk <- data.frame(smk_totaly.bl, 
+                        percent_smk_totaly.bl, 
+                        smk_totaln.bl, 
+                        percent_smk_totaln.bl, 
+                        smk_cony.bl, 
+                        percent_smk_cony.bl,
+                        smk_conn.bl, 
+                        percent_smk_conn.bl, 
+                        smk_faily.bl, 
+                        percent_smk_faily.bl,
+                        smk_failn.bl, 
+                        percent_smk_failn.bl, 
+                        smk_test.bl$p.value,
+                        
+                        
+                        smk_totaly.m2, 
+                        percent_smk_totaly.m2, 
+                        smk_totaln.m2, 
+                        percent_smk_totaln.m2, 
+                        smk_cony.m2, 
+                        percent_smk_cony.m2,
+                        smk_conn.m2, 
+                        percent_smk_conn.m2, 
+                        smk_faily.m2, 
+                        percent_smk_faily.m2,
+                        smk_failn.m2, 
+                        percent_smk_failn.m2, 
+                        smk_test.m2$p.value
+                        )
+demotable_smk
+```
+
+# Diabetes
+```{r}
+
+# baseline total
+## total 
+dmdx_total_1.bl <- sum(df.bl$diabetes == 1) 
+dmdx_total_0.bl <- sum(df.bl$diabetes == 0) 
+
+percent_dmdx_total_1.bl <- mean(df.bl$diabetes == 1) 
+percent_dmdx_total_0.bl <-mean(df.bl$diabetes == 0) 
+
+
+## failures 
+dmdx_fail_1.bl <- sum(df.fail.bl$diabetes == 1) 
+dmdx_fail_0.bl <- sum(df.fail.bl$diabetes == 0) 
+
+percent_dmdx_fail_1.bl <- mean(df.fail.bl$diabetes == 1) 
+percent_dmdx_fail_0.bl <-mean(df.fail.bl$diabetes == 0) 
+
+
+## Control
+dmdx_con_1.bl <- sum(df.con.bl$diabetes == 1) 
+dmdx_con_0.bl <- sum(df.con.bl$diabetes == 0) 
+
+percent_dmdx_con_1.bl <- mean(df.con.bl$diabetes == 1) 
+percent_dmdx_con_0.bl <-mean(df.con.bl$diabetes == 0) 
+
+# Month 2
+
+## total 
+dmdx_total_1.m2 <- sum(df.m2$diabetes == 1) 
+dmdx_total_0.m2 <- sum(df.m2$diabetes == 0) 
+
+percent_dmdx_total_1.m2 <- mean(df.m2$diabetes == 1) 
+percent_dmdx_total_0.m2 <-mean(df.m2$diabetes == 0) 
+
+
+## failures 
+dmdx_fail_1.m2 <- sum(df.fail.m2$diabetes == 1) 
+dmdx_fail_0.m2 <- sum(df.fail.m2$diabetes == 0) 
+
+percent_dmdx_fail_1.m2 <- mean(df.fail.m2$diabetes == 1) 
+percent_dmdx_fail_0.m2 <-mean(df.fail.m2$diabetes == 0) 
+
+
+## Control
+dmdx_con_1.m2 <- sum(df.con.m2$diabetes == 1) 
+dmdx_con_0.m2 <- sum(df.con.m2$diabetes == 0) 
+
+percent_dmdx_con_1.m2 <- mean(df.con.m2$diabetes == 1) 
+percent_dmdx_con_0.m2 <-mean(df.con.m2$diabetes == 0) 
+
+
+# 2-sample test for equality of proportions with continuity correction
+# f_table is proportion matrix, (Xnvar, Xntot, Ynvar, Yntot)
+
+
+# baseline difference in males, fisher proportions
+f_table <- matrix(c(dmdx_fail_1.bl, 
+                    (dmdx_fail_1.bl+ dmdx_fail_0.bl),
+                    dmdx_con_1.bl,
+                    (dmdx_con_1.bl + dmdx_con_0.bl)),ncol=2)
+dmdx_test.bl <- fisher.test(x = f_table, alternative = 'two.sided')
+dmdx_test.bl$p.value
+
+
+
+# month 2 difference in males, fisher proportions
+f_table <- matrix(c(dmdx_fail_1.m2, 
+                    (dmdx_fail_1.m2+ dmdx_fail_0.m2),
+                    dmdx_con_1.m2,
+                    (dmdx_con_1.m2 + dmdx_con_0.m2)),ncol=2)
+dmdx_test.m2 <- fisher.test(x = f_table, alternative = 'two.sided')
+dmdx_test.m2$p.value
+
+
+
+demotable_dmdx <- data.frame(dmdx_total_1.bl, 
+                        percent_dmdx_total_1.bl, 
+                        dmdx_total_0.bl, 
+                        percent_dmdx_total_0.bl, 
+                        dmdx_con_1.bl, 
+                        percent_dmdx_con_1.bl,
+                        dmdx_con_0.bl, 
+                        percent_dmdx_con_0.bl, 
+                        dmdx_fail_1.bl, 
+                        percent_dmdx_fail_1.bl,
+                        dmdx_fail_0.bl, 
+                        percent_dmdx_fail_0.bl, 
+                        dmdx_test.bl$p.value,
+                        
+                        
+                        dmdx_total_1.m2, 
+                        percent_dmdx_total_1.m2, 
+                        dmdx_total_0.m2, 
+                        percent_dmdx_total_0.m2, 
+                        dmdx_con_1.m2, 
+                        percent_dmdx_con_1.m2,
+                        dmdx_con_0.m2, 
+                        percent_dmdx_con_0.m2, 
+                        dmdx_fail_1.m2, 
+                        percent_dmdx_fail_1.m2,
+                        dmdx_fail_0.m2, 
+                        percent_dmdx_fail_0.m2, 
+                        dmdx_test.m2$p.value
+                        )
+demotable_dmdx
+```
+
+
+# combine and write
+```{r}
+demotable <- t(cbind(demotable_smk, demotable_age, demotable_alc, demotable_dmdx, demotable_sex))
+
+write.csv(demotable, "demographic_table.csv")
+```
+
+
+
+
+
+# Family Relations
+```{r}
+relations <-  c("sibling", "parent", "Spouse", "child", "other")
+
+
+df$HC_RELATN <- gsub("Brother/Sister", "sibling", df$HC_RELATN)
+
+df$HC_RELATN <- gsub("Mother", "parent", df$HC_RELATN)
+df$HC_RELATN <- gsub("Father", "parent", df$HC_RELATN)
+
+df$HC_RELATN <- gsub("Son/Daughter", "child", df$HC_RELATN)
+
+df$HC_RELATN <- gsub("Niece/Nephew", "child", df$HC_RELATN)
+
+df$HC_RELATN <- gsub("Grandchild", "child", df$HC_RELATN)
+
+
+df[(which(!(df$HC_RELATN %in% relations))),"HC_RELATN"] <- "other"
+# change NAs to "other"
+df[is.na(df$HC_RELATN),"HC_RELATN"] <- "other"
+df.mal <- subset(df, bmi_cat2=="mal")
+df.well <- subset(df, bmi_cat2=="well")
+
+# total
+## number 
+sum(df$HC_RELATN == "sibling") 
+sum(df$HC_RELATN == "parent") 
+sum(df$HC_RELATN == "Spouse") 
+sum(df$HC_RELATN == "child") 
+sum(df$HC_RELATN == "other") 
+
+mean(df$HC_RELATN == "sibling") 
+mean(df$HC_RELATN == "parent") 
+mean(df$HC_RELATN == "Spouse") 
+mean(df$HC_RELATN == "child") 
+mean(df$HC_RELATN == "other") 
+
+
+# SM 
+sum(df.mal$HC_RELATN == "sibling") 
+sum(df.mal$HC_RELATN == "parent") 
+sum(df.mal$HC_RELATN == "child")
+sum(df.mal$HC_RELATN == "Spouse") 
+sum(df.mal$HC_RELATN == "other") 
+
+mean(df.mal$HC_RELATN == "sibling") 
+mean(df.mal$HC_RELATN == "parent") 
+mean(df.mal$HC_RELATN == "child") 
+mean(df.mal$HC_RELATN == "Spouse") 
+mean(df.mal$HC_RELATN == "other")
+
+# Control
+sum(df.well$HC_RELATN == "sibling") 
+sum(df.well$HC_RELATN == "parent") 
+sum(df.well$HC_RELATN == "child") 
+sum(df.well$HC_RELATN == "Spouse") 
+sum(df.well$HC_RELATN == "other") 
+
+mean(df.well$HC_RELATN == "sibling") 
+mean(df.well$HC_RELATN == "parent") 
+mean(df.well$HC_RELATN == "child") 
+mean(df.well$HC_RELATN == "Spouse") 
+mean(df.well$HC_RELATN == "other")
+
+f_table <- matrix(c(3,0,12,0,3,3,4,10,14,1),ncol=2)
+# fisher's exact test due to small counts
+test <- fisher.test(x = f_table, alternative = 'two.sided')
+test
+
+test$p.value
+
+```
+
+
+
+
+
+
