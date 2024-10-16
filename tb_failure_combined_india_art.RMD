@@ -245,16 +245,16 @@ ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected_combi
 
 # Prediction who fails at baseline
 ## Dimension Reduction Failures and controls of baseline
+```{r}
+path <- file.path("outs/dimension_reduction")
+```
 
 ### PCA  {.tabset}
 Using the DESeq object and PCAplot function on the ComBat corrected data
-
-
-
 ```{r base-pca}
 
 indata_base = indata[,colData(indata)$visit=="Baseline"]
-#indata_m2 = indata[,colData(indata)$visit == "Month 2"]
+indata_m2 = indata[,colData(indata)$visit == "Month 2"]
 table(colData(indata)$"subjtype")
 table(colData(indata_base)$"subjtype")
 
@@ -262,22 +262,21 @@ indata_tmp <- SummarizedExperiment(assays=list(counts=assays(indata_base)$log_cp
 
 #indata_tmp <- indata_tmp[,-which(colnames(indata_tmp) %in% c("10200107A0"))]
 
-names(indata_tmp) <- NULL
+names(indata_tmp) <- "counts"
 
 indata_tmp2 <- as(indata_tmp, "SingleCellExperiment")
-#plotPCA(DESeqTransform(indata_tmp))
+#plotPCA(DESeqTransform(indata_tmp)) ## only uses counts assay
 
 
 # need to install "scater" package
 g <- singleCellTK::plotPCA(indata_tmp2, colorBy = "subjtype", useAssay = "counts", runPCA = TRUE)
 
 
-g <- g + geom_point(size = .5) + ggtitle("PCA Baseline")
+g <- g + geom_point(size = 1.5) + ggtitle("PCA Baseline")
 g
 
-# svg(filename = "base_pca_mdx_included.svg", width = 4, height = 4, pointsize = 5)
-# g
-# dev.off()
+# save file
+ggsave(file.path(path, "pca_bl.svg"),plot=g,width = 4, height = 4)
 ```
 
 ### tSNE {.tabset}
@@ -321,13 +320,16 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, label = colnames(assay(indat
 ggtitle("UMAP Plot")
 
 plot(g)
+
+# save file
+ggsave(file.path(path, "umap_bl.svg"),plot=g,width = 4, height = 4)
+
 ```
 ## Differential Expression at baseline {.tabset}
-
 ```{r }
-#designMat <- model.matrix(~factor(Tb_status) + factor(bmi_cat2) + factor(Tb_status):factor(bmi_cat2), data=colData(indata_base))
+# path to save
+path <- file.path("outs/differential_expression")
 
-#designMat <- model.matrix(~factor(Tb_status) + factor(bmi_cat2), data=colData(indata_base))
 
 designMat <- model.matrix(~factor(subjtype) , data=colData(indata_base))
 
@@ -346,8 +348,8 @@ fitNut <- eBayes(fitNut)
 limmaResNut <- topTable(fitNut, adjust.method = "BH", n = Inf, sort.by = "P")
 
 
-dim(limmaResNut[limmaResNut$adj.P.Val <0.05,])
-table(colData(indata_base)$subjtype)
+dim(limmaResNut[limmaResNut$adj.P.Val <0.05,])  # 1208 genes
+table(colData(indata_base)$subjtype) # 21 control 20 failure
 
 new_hist_padjval_100breaks <- hist(limmaResNut$adj.P.Val, breaks=100)
 new_hist_pval_100breaks <- hist(limmaResNut$P.Value, breaks=100)
@@ -378,7 +380,7 @@ top25_log <- top25_log[1:25,]
 
 #write.csv(top25_log, "top_25_logfc.csv")
 
-#write.csv(limmaResNut[1:3000,], "IPA_TB_Failure_baseline.csv")
+write.csv(limmaResNut[1:3000,], file.path(path,"IPA_TB_Failure_baseline.csv"))
 
 ```
 
@@ -406,19 +408,17 @@ ha = HeatmapAnnotation(df = df, col = list(Outcome=c("Failure"="Red","Control"="
 g <- Heatmap(mat,show_row_names=F,show_column_names = F, top_annotation = ha, cluster_columns = T )
 
 #library(Cairo)
-svg("plots/differential_expression_heatmaps/baseline_top1k.svg", width=7, height=7 )
+svg(file.path(path,"baseline_top1k.svg"), width=7, height=7 )
 g
 dev.off()
-#ggsave("plots/differential_expression_heatmaps/baseline_top1k.svg", width=7, height=7, plot=g, device = "svg")
 ```
 
 
 
 ## TBSigProfiler Pathways baseline {.tabset}
 ```{r, message=FALSE, results='hide'}
-TBsignatures$vanvalkenburg_6_bl_xmdx <- NULL
-
-
+# path to save
+path <- file.path("outs", "tbsigprofiler_outs", "baseline")
 ## Add new signatures to the profiler
 TBsignatures$Zhao_NANO_6 <- c("ANKRD22","ATP1A1","BLK","CCR6","DARS2","EXOC2")
 
@@ -435,12 +435,9 @@ TBsignatures$'Leong_RISK_29_up' = c("SPSB1","MOB3C","FUT4","DERA","WARS","ZNRF1"
 TBsignatures$'Leong_RISK_29_dn' = c("SH2D1B","AGAP9","ZNF202","NEIL1","LUC7L","CCDC78","PRSS53","ENO3",
                                     "CIRBP","SNRNP70","ZNF419","CCDC14","GSTA4","MDN1","SPDYE5")
 
-#TBsignatures$VanValkenburg_6 <- c("RNF10", "RREB1", "PFKL", "NADK", "PIK3CD", "CALCR")
-#selected tb signatures
-# samp_tbsignatures <- list(TBsignatures$Suliman_RISK_4, TBsignatures$Sweeney_OD_3, TBsignatures$Leong_RISK_29, TBsignatures$Zak_RISK_16, TBsignatures$Leong_RISK_29_up, TBsignatures$Leong_RISK_29_dn)
-# names(samp_tbsignatures) <- c("Suliman_RISK_4", "Sweeney_OD_3", "Leong_RISK_29", "Zak_RISK_16", "Leong_RISK_29_up", "Leong_Risk_29_dn")
 
 TBsignatures$protein_markers <- c("IL6", "IFNG", "IL13", "CXCL1", "CCL2", "CCL3", "CCL4", "CXCL8", "CXCL10",  "CX3CL1")
+TBsignatures$Zimmer_RES_3 <- c("GBP5", "DUSP3", "KLF2")
 
 samp_tbsignatures <- TBsignatures
 
@@ -460,6 +457,7 @@ plage_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PL
 #### Boxplot- select sigs
 
 ```{r base-ssgsea-boxplot-selectsigs}
+#library(TBSignatureProfiler)
 select_tbsignatures <- list(TBsignatures$Thompson_FAIL_13,
                             TBsignatures$Thompson_9,
                             TBsignatures$Tornheim_RES_25,
@@ -487,25 +485,16 @@ ssgsea_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algori
                                signatures = select_tbsignatures, parallel.sz = 4)
 
 
-colData(ssgsea_res_select)$visit_type <- gsub("Failure", "Failure", colData(ssgsea_res_select)$visit_type)
-colData(ssgsea_res_select.bl)$visit_type <- gsub("Failure", "Failure", colData(ssgsea_res_select.bl)$visit_type)
-colData(ssgsea_res_select.m2)$visit_type <- gsub("Failure", "Failure", colData(ssgsea_res_select.m2)$visit_type)
-
-colData(ssgsea_res_select)$subjtype <- gsub("Failure", "Failure", colData(ssgsea_res_select)$subjtype)
-colData(ssgsea_res_select.bl)$subjtype <- gsub("Failure", "Failure", colData(ssgsea_res_select.bl)$subjtype)
-colData(ssgsea_res_select.m2)$subjtype <- gsub("Failure", "Failure", colData(ssgsea_res_select.m2)$subjtype)
 
 
-#png("ssgsea_selectsig_boxplot_bl.png", width = 6.5, pointsize = 8)
+
 signatureBoxplot(ssgsea_res_select, name="ssGSEA", 
                  signatureColNames = names(select_tbsignatures),
                  annotationColName = c("visit_type"), scale = TRUE,
                  rotateLabels = T) #rotateLabels = TRUE,
 
-# path <- file.path("plots")
-# dir.create(path)
-ggsave(file.path(path,"tbsigprofiler_selectsigs_boxplots.svg"), width = 9, height=12)
-#dev.off()
+
+ggsave(file.path(path,"ssGSEA/tbsigprofiler_selectsigs_boxplots.svg"), width = 9, height=12)
 ```
 
 
@@ -519,7 +508,7 @@ df <- tableAUC(ssgsea_res_select.bl,
          num.boot = 100,
          pb.show = FALSE,
          output = "data.frame")
-write.csv(df, file.path(path, "tbsigprofiler_selectsigs_AUC_boxplots_table_bl.csv"))
+write.csv(df, file.path(path, "ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_table_bl.csv"))
 
 
 ```
@@ -534,7 +523,7 @@ df <- tableAUC(ssgsea_res_select.m2,
          pb.show = FALSE,
          output = "data.frame")
 
-write.csv(df, file.path(path, "tbsigprofiler_selectsigs_AUC_boxplots_table_m2.csv"))
+write.csv(df, file.path(path, "ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_table_m2.csv"))
 
 ```
 #### AUC Boxplots
@@ -545,24 +534,25 @@ compareBoxplots(ssgsea_res_select.bl, annotationColName = "subjtype",
                 signatureColNames = names(select_tbsignatures),
                 pb.show = FALSE, fill.col = "blue",
                 rotateLabels = TRUE)
-ggsave(file.path(path,"tbsigprofiler_selectsigs_AUC_boxplots_bl.svg"), width = 7, height=7)
+ggsave(file.path(path,"ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_bl.svg"), width = 7, height=7)
 ```
 
 ##### M2
 ```{r}
+path.m2 <- file.path("outs/month_2")
 set.seed(0)
 compareBoxplots(ssgsea_res_select.m2, annotationColName = "subjtype",
                 signatureColNames = names(select_tbsignatures),
                 pb.show = FALSE, fill.col = "blue",
                 rotateLabels = TRUE)
-ggsave(file.path(path,"tbsigprofiler_selectsigs_AUC_boxplots_m2.svg"), width = 7, height=7)
+ggsave(file.path(path.m2,"ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_m2.svg"), width = 7, height=7)
 
 ```
 
 #### ROC Plots
 #### functions
 ```{r}
-sigroc <- function (inputData, annotationData, signatureColNames, annotationColName, 
+sigroc <- function(inputData, annotationData, signatureColNames, annotationColName, 
   scale = FALSE, choose_colors = c("cornflowerblue", "gray24"), 
   name = "Signatures", nrow = NULL, ncol = NULL) 
 {
@@ -668,83 +658,6 @@ signatureROCplot(inputData = ssgsea_res_select.m2,
                    signatureColNames = names(select_tbsignatures),
                    annotationColName = "subjtype")
 ```
-
-### GSVA {.tabset}
-
-#### Heatmap
-
-```{r base-gsva-heatmap}
-signatureHeatmap(gsva_res, name="GSVA", signatureColNames = names(samp_tbsignatures),
-                 annotationColNames = c("subjtype"),
-                 showColumnNames = FALSE,
-                 split_heatmap='none')
-```
-
-
-#### Boxplot
-
-```{r base-gsva-boxplot}
-signatureBoxplot(gsva_res, name="GSVA", signatureColNames = names(samp_tbsignatures),
-                 annotationColName = c("subjtype"))# , rotateLabels = TRUE)
-```
-
-#### Boxplots Single {.tabset}
-
-```{r base-gsva-boxplot-ind, results="asis"}
-for (i in names(samp_tbsignatures)){
-
-  cat("#####", i, "\n")
-
-  print(signatureBoxplot(gsva_res,
-                         name=i, 
-                         signatureColNames = i,
-                         annotationColName = c("subjtype"),   
-                         rotateLabels = T))
-
-  cat("\n\n")
-}
-
-```
-
-#### Signature plots {.tabset}
-```{r base-gsva-sigplots-ind, results="asis"}
-for (i in names(samp_tbsignatures)){
-
-  cat("#####", i, "\n")
-
-  signatureGeneHeatmap(gsva_res, useAssay="log_cpm",
-                     samp_tbsignatures[[i]],
-                     name = i, signatureColNames = NULL,
-                     annotationColNames = c("subjtype",i),
-                     showColumnNames = FALSE, 
-                     column_order = NULL)
-
-  cat("\n\n")
-}
-
-```
-
-#### AUC Table {.tabset}
-```{r base-gsva-auctable, message = FALSE}
-set.seed(0)
-tableAUC(gsva_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(samp_tbsignatures),
-         num.boot = 100,
-         pb.show = FALSE)
-```
-
-#### AUC Boxplots
-```{r base-gsva-auc-boxplot, message = FALSE}
-set.seed(0)
-compareBoxplots(gsva_res, annotationColName = "subjtype",
-                signatureColNames = names(samp_tbsignatures),
-                pb.show = FALSE, fill.col = "blue",
-                rotateLabels = TRUE)
-```
-
-
-
 
 
 ### ssGSEA {.tabset}
