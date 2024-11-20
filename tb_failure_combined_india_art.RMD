@@ -214,7 +214,7 @@ names(assays(indata)) <- c("counts", "log_counts", "cpm", "log_cpm")
 # write.table(outCibersort, 
 #             file="expr_mat_tb_fail.txt", 
 #             quote=FALSE, sep='\t', col.names = TRUE, row.names = FALSE)
-
+saveRDS(indata, "data_processed/tx_failure_batchcorrected.RDS")
 ```
 
 ## UMAP on adjusted data, after combining same subjid/timepoint
