@@ -48,6 +48,40 @@ knitr::opts_chunk$set(echo = FALSE)
 indata <- readRDS("data_processed/tx_failure_batchcorrected.RDS")
 indata <- indata[,colData(indata)$visit=="Baseline"] # focus on baseline
 dim(indata)
+
+indata_base = indata[,colData(indata)$visit=="Baseline"]
+#indata_m2 = indata[,colData(indata)$visit == "Month 2"]
+
+library(ROCR)
+set.seed(101) 
+sample <- sample.int(n = nrow(colData(indata_base)), size = floor(.75*nrow(colData(indata_base))), replace = F)
+
+df <- as.data.frame(colData(indata_base))
+df_train <- df[sample,]
+df_test <- df[-sample,]
+
+train <- indata_base[,colData(indata_base)$subjid %in% df_train$subjid]
+test  <- indata_base[, colData(indata_base)$subjid %in% df_test$subjid]
+
+train_subjid <- colData(train)$subjid
+test_subjid <- colData(test)$subjid
+
+dim(train)
+table(colData(train)$subjtype)
+
+
+
+# matrix of log_cpm for all genes in baseline
+bl_mat <- t(as.matrix(assay(indata_base, "log_cpm")))
+# only include significant genes in matrix
+#sig_bl_mat <- as.data.frame(t(bl_mat[rownames(dfx),]))
+
+df <- as.data.frame(colData(indata_base))
+
+#sig_bl_mat$subjtype <- df$subjtype
+
+bl_mat <- as.data.frame(bl_mat)
+bl_mat$subjtype <- df$subjtype
 ```
 
 
