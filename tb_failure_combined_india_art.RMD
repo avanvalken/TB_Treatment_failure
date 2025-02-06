@@ -418,7 +418,7 @@ dev.off()
 ## TBSigProfiler Pathways baseline {.tabset}
 ```{r, message=FALSE, results='hide'}
 # path to save
-path <- file.path("outs", "tbsigprofiler_outs", "baseline")
+base_path <- file.path("outs", "tbsigprofiler_outs", "baseline")
 ## Add new signatures to the profiler
 TBsignatures$Zhao_NANO_6 <- c("ANKRD22","ATP1A1","BLK","CCR6","DARS2","EXOC2")
 
@@ -457,6 +457,7 @@ plage_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PL
 #### Boxplot- select sigs
 
 ```{r base-ssgsea-boxplot-selectsigs}
+path <- file.path(base_path, "ssGSEA")
 #library(TBSignatureProfiler)
 select_tbsignatures <- list(TBsignatures$Thompson_FAIL_13,
                             TBsignatures$Thompson_9,
@@ -484,7 +485,19 @@ ssgsea_res_select.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algo
 ssgsea_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "ssGSEA",
                                signatures = select_tbsignatures, parallel.sz = 4)
 
+plage_res <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
 
+plage_res_select <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res_select.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
 
 
 
@@ -494,7 +507,7 @@ signatureBoxplot(ssgsea_res_select, name="ssGSEA",
                  rotateLabels = T) #rotateLabels = TRUE,
 
 
-ggsave(file.path(path,"ssGSEA/tbsigprofiler_selectsigs_boxplots.svg"), width = 9, height=12)
+ggsave(file.path(path,"tbsigprofiler_selectsigs_boxplots.svg"), width = 9, height=12)
 ```
 
 
@@ -502,19 +515,39 @@ ggsave(file.path(path,"ssGSEA/tbsigprofiler_selectsigs_boxplots.svg"), width = 9
 ##### BL
 ```{r}
 set.seed(0)
+
+
 df <- tableAUC(ssgsea_res_select.bl,
          annotationColName = "subjtype",
          signatureColNames = names(select_tbsignatures),
          num.boot = 100,
          pb.show = FALSE,
          output = "data.frame")
-write.csv(df, file.path(path, "ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_table_bl.csv"))
+write.csv(df, file.path(path, "tbsigprofiler_selectsigs_AUC_boxplots_table_bl_ssGSEA.csv"))
 
+# PLAGE
+df <- tableAUC(plage_res_select.bl,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+write.csv(df, file.path(base_path, "PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_table_bl_PLAGE.csv"))
+
+# PLAGE, all sigs
+df <- tableAUC(plage_res.bl,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+write.csv(df, file.path(base_path, "PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_table_bl_PLAGE.csv"))
 
 ```
 
 ##### M2
 ```{r}
+path.m2 <- file.path("outs/tbsigprofiler_outs/month2")
 set.seed(0)
 df <- tableAUC(ssgsea_res_select.m2,
          annotationColName = "subjtype",
@@ -523,7 +556,17 @@ df <- tableAUC(ssgsea_res_select.m2,
          pb.show = FALSE,
          output = "data.frame")
 
-write.csv(df, file.path(path, "ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_table_m2.csv"))
+write.csv(df, file.path(path.m2, "ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_table_m2.csv"))
+
+df <- tableAUC(plage_res_select.m2,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+
+write.csv(df, file.path(path.m2, "PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_table_m2.csv"))
+
 
 ```
 #### AUC Boxplots
@@ -534,18 +577,42 @@ compareBoxplots(ssgsea_res_select.bl, annotationColName = "subjtype",
                 signatureColNames = names(select_tbsignatures),
                 pb.show = FALSE, fill.col = "blue",
                 rotateLabels = TRUE)
-ggsave(file.path(path,"ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_bl.svg"), width = 7, height=7)
+ggsave(file.path(path,"tbsigprofiler_selectsigs_AUC_boxplots_bl.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res_select.bl, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(base_path,"PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_bl.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res.bl, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(base_path,"PLAGE/tbsigprofiler_AUC_boxplots_bl.svg"), width = 7, height=7)
+
 ```
 
 ##### M2
 ```{r}
-path.m2 <- file.path("outs/month_2")
 set.seed(0)
 compareBoxplots(ssgsea_res_select.m2, annotationColName = "subjtype",
                 signatureColNames = names(select_tbsignatures),
                 pb.show = FALSE, fill.col = "blue",
                 rotateLabels = TRUE)
 ggsave(file.path(path.m2,"ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_m2.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res_select.m2, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(path.m2,"PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_m2.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res.m2, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(path.m2,"PLAGE/tbsigprofiler_AUC_boxplots_m2.svg"), width = 7, height=7)
 
 ```
 
@@ -797,7 +864,7 @@ out <- out %>%
           unname()
 
 
-png(filename = "RePORT-ssgsea-auc-boxplot-bl.png", pointsize = 8, width = 6.5, height = 3.8)
+png(filename = file.path(path,"RePORT-ssgsea-auc-boxplot-bl.png"), pointsize = 8, width = 6.5, height = 3.8)
 set.seed(0)
 compareBoxplots(ssgsea_res, annotationColName = "subjtype",
                 signatureColNames = out,
@@ -833,6 +900,9 @@ for (i in names(samp_tbsignatures)){
 
 
 ### PLAGE {.tabset}
+```{r}
+
+```
 
 
 #### Heatmap
@@ -897,6 +967,31 @@ tableAUC(plage_res,
          signatureColNames = names(samp_tbsignatures),
          num.boot = 100,
          pb.show = FALSE)
+
+out <- tableAUC(ssgsea_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE, 
+         output="data.frame")
+# Use dplyr::filter to only select rows with AUC > 0.6 on out object 
+# Pipe into a dplyr::select function to only select signames %>% unlist %>% unname
+# Save this as signatureColNames
+
+out <- out %>% 
+          filter(P.value<0.05) %>% 
+          select(Signature) %>% 
+          unlist() %>% 
+          unname()
+
+
+png(filename = file.path(path, "RePORT-ssgsea-auc-boxplot-bl.png"), pointsize = 8, width = 6.5, height = 3.8)
+set.seed(0)
+compareBoxplots(ssgsea_res, annotationColName = "subjtype",
+                signatureColNames = out,
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+dev.off()
 ```
 
 #### AUC Boxplots
@@ -906,6 +1001,7 @@ compareBoxplots(plage_res, annotationColName = "subjtype",
                 signatureColNames = names(samp_tbsignatures),
                 pb.show = FALSE, fill.col = "blue",
                 rotateLabels = TRUE)
+
 ```
 
 #### ROC plots
@@ -1039,7 +1135,7 @@ new_hist_pval_100breaks <- hist(limmaResNut$P.Value, breaks=100)
 sig_limmaResNut <- limmaResNut[limmaResNut$adj.P.Val <0.05,]
 sig_limmaResNut <- sig_limmaResNut[order(sig_limmaResNut$adj.P.Val),]
 
-#write.csv(sig_limmaResNut, "sig_tbfail_india_baseline.csv")
+write.csv(sig_limmaResNut, "outs/differential_expression/sig_tbfail_m2.csv")
 
 top_500_genes <- limmaResNut[1:500,]
 top_1k_genes <- limmaResNut[1:1000,]
@@ -1059,7 +1155,7 @@ top25_lot <- sig_limmaResNut[sig_limmaResNut$logFC >= 0,]
 top25_log <- top25_lot[order(-top25_lot$logFC),]
 top25_log <- top25_log[1:25,]
 
-#write.csv(limmaResNut[1:3000,], "IPA_TB_Failure_month2.csv")
+write.csv(limmaResNut[1:3000,], "outs/differential_expression/IPA_TB_Failure_month2_top3k.csv")
 ```
 
 
@@ -1071,7 +1167,7 @@ datatable(sig_limmaResNut,
           rownames = T)
 
 ## Make a Heatmap of all genes
-mat = as.matrix(assay(indata_m2[row.names(top_1k_genes),],"log_cpm"))
+mat = as.matrix(assay(indata_m2[row.names(sig_limmaResNut),],"log_cpm"))
 mat = t(scale(t(mat)))
 
 df=data.frame(Outcome=colData(indata_m2)$"subjtype") 
@@ -1085,7 +1181,7 @@ ha = HeatmapAnnotation(df = df, col = list(Outcome=c("Failure"="Red","Control"="
 
 g <- Heatmap(mat,show_row_names=F,show_column_names = F, top_annotation = ha, cluster_columns = T )
 
-svg("plots/differential_expression_heatmaps/month2_top1k.svg", width=7, height=7 )
+svg("outs/differential_expression/month2_137_sig_genes_heatmap.svg", width=7, height=7 )
 g
 dev.off()
 g
