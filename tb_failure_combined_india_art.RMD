@@ -84,8 +84,8 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colna
  #geom_text(aes(label=rownames(embedding), label.size = 0.10),hjust=0, vjust=0)
 
 plot(g)
-ggsave("outs/dimension_reduction/tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
-ggsave("outs/dimension_reduction/tb_fail_umap_log_counts_pre-batch-corrected.svg", width=7, height=7)
+ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
+ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.svg", width=7, height=7)
 
 # remove temporary object
 rm(indata_tmp)
@@ -139,8 +139,8 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch,label = colnam
 
 plot(g)
 
-ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected.png", width=7, height=7)
-ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected.svg", width=7, height=7)
+ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_cpm_post-batch-corrected.png", width=7, height=7)
+ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_cpm_post-batch-corrected.svg", width=7, height=7)
 ```
 
 # Add duplicates together for 1 batch
@@ -238,7 +238,7 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colna
  #geom_text(aes(label=rownames(embedding), label.size = 0.10),hjust=0, vjust=0)
 
 plot(g)
-ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected_combined_duplicates.svg", width=7, height=7)
+ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_cpm_post-batch-corrected_combined_duplicates.svg", width=7, height=7)
 ```
 
 
@@ -246,7 +246,7 @@ ggsave("outs/dimension_reduction/tb_fail_umap_log_cpm_post-batch-corrected_combi
 # Prediction who fails at baseline
 ## Dimension Reduction Failures and controls of baseline
 ```{r}
-path <- file.path("outs/dimension_reduction")
+path <- file.path("outs/dimension_reduction/baseline")
 ```
 
 ### PCA  {.tabset}
@@ -1055,9 +1055,9 @@ g <- singleCellTK::plotPCA(indata_tmp2, colorBy = "subjtype", useAssay = "counts
 g <- g + geom_point(size = .5) + ggtitle("PCA Month 2")
 g
 
-# svg(filename = "m2_pca_mdx_included.svg", width = 4, height = 4, pointsize = 5)
-# g
-# dev.off()
+svg(filename = "outs/dimension_reduction/month2/m2_pca.svg", width = 4, height = 4, pointsize = 5)
+g
+dev.off()
 
 #plotPCA(DESeqTransform(indata_tmp), intgroup = "subjtype")
 ```
@@ -1102,6 +1102,14 @@ ggtitle("UMAP Plot")
 
 plot(g)
 ```
+
+#### Save
+```{r}
+ggsave(filename = "outs/dimension_reduction/month2/m2_umap.svg", plot=g, device="svg", width = 4, height = 4)
+```
+
+
+
 ## Differential Expression at 2 months {.tabset} 
 
 ```{r}
@@ -1907,554 +1915,7 @@ for (i in (rownames(t(sig_bl_mat)))){
 
 ```
 
-## adding machine
-```{r, eval=FALSE}
 
-# 2-gene signatures
-x <- data.frame(rownames(mat))
-x$gene <- rep("BICD2")
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-nnn <- paste("X", n, sep = "")
-
-names(m) <- nnn
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-```
-
-
-
-
-
-
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC),]
-
-round2 <- df[1:15,]
-
-# X31250 has the smallest pval and largest AUC
-l2 <- m[["X31062"]]
-
-```
-
-
-## 3 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "BICD2"
-x$gene2 <- "BACH1-AS1"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC),]
-View(df)
-
-#X
-l3 <- m[["X25364"]]
-```
-
-## 4 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "BACH1-AS1"
-x$gene2 <- "BICD2"
-x$gene3 <- "AC106017.2"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC, -df$neg10xLog.P.value.),]
-View(df)
-
-#X
-#l4 <- m[["X26656"]]
-
-```
-
-## 5 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "AC016245.1"
-x$gene2 <- "BACH1-AS1"
-x$gene3 <- "BICD2"
-x$gene4 <- "AC106017.2"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC, -df$neg10xLog.P.value.),]
-View(df)
-
-#X
-l5 <- m[["X27888"]]
-```
-
-## 5 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "AC106017.2"
-x$gene2 <- "BICD2"
-x$gene3 <- "AC016245.1"
-x$gene4 <- "BACH1-AS1"
-x$gene5 <- "ATP9A"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC, -df$neg10xLog.P.value.),]
-View(df)
-
-#X
-l6 <- m[["X28357"]]
-
-#rownames.mat.         gene1         gene2         gene3 
-#      "RNF10"       "RREB1"        "PFKL"        "NADK" 
-#        gene4         gene5 
-#     "PIK3CD"       "CALCR" 
-
-#vanvalkenburg_6_bl <- c("AC008763.2", "AC106017.2", "BICD2", "AC016245.1", "BACH1-AS1", "ATP9A")
-
-#TBsignatures$VanValkenburg_6 <- c("RNF10", "RREB1", "PFKL", "NADK", "PIK3CD", "CALCR")
-
-#### also, instead of RNF10, LINC00472 or AL157384.1. Picked bc of protein coding
-```
-
-
-
-
-
-
-
-## New sig, all timepoints {.tabset}
-
-```{r, eval=FALSE}
-designMat <- model.matrix(~factor(subjtype) , data=colData(indata))
-
-colnames(designMat)
-colnames(designMat) <- c("Intercept", "Control")
-
-head(designMat)
-
-fit <- lmFit(assay(indata_base, "log_cpm"), designMat)
-
-# Difference in expression between Failures and controls 
-
-contrast.matrixNut<- makeContrasts(Control, levels = designMat)
-fitNut <- contrasts.fit(fit,contrast.matrixNut)
-fitNut <- eBayes(fitNut)
-limmaResNut <- topTable(fitNut, adjust.method = "BH", n = Inf, sort.by = "P")
-
-
-dim(limmaResNut[limmaResNut$adj.P.Val <0.05,])
-table(colData(indata_base)$subjtype)
-
-new_hist_padjval_100breaks <- hist(limmaResNut$adj.P.Val, breaks=100)
-new_hist_pval_100breaks <- hist(limmaResNut$P.Value, breaks=100)
-##shows spike near 0
-
-sig_limmaResNut <- limmaResNut[limmaResNut$adj.P.Val <0.05,]
-sig_limmaResNut <- sig_limmaResNut[order(sig_limmaResNut$adj.P.Val),]
-
-#write.csv(sig_limmaResNut, "sig_tbfail_india_baseline.csv")
-
-top_500_genes <- limmaResNut[1:500,]
-top_1k_genes <- limmaResNut[1:1000,]
-## top 50 by logfc
-###top 50 by p.adj value
-top_50 <- sig_limmaResNut[1:50,]
-#write.csv(top_50, "top_50_by_padj.csv")
-
-
-neg_25_log <- (sig_limmaResNut[sig_limmaResNut$logFC < 0,])
-neg_25_log <- neg_25_log[order(neg_25_log$logFC),]
-neg_25_log <- neg_25_log[1:25,]
-
-#write.csv(neg_25_log, "neg_25_logfc.csv")
-
-top25_lot <- sig_limmaResNut[sig_limmaResNut$logFC >= 0,]
-top25_log <- top25_lot[order(-top25_lot$logFC),]
-top25_log <- top25_log[1:25,]
-
-#write.csv(top25_log, "top_25_logfc.csv")
-
-```
-
-
-
-### 2 All genes datatable and heatmap {.tabset}
-```{r, eval=FALSE}
-datatable(sig_limmaResNut, 
-          options=list(scrollX=T,pageLength=20),
-          rownames = T)
-
-## Make a Heatmap of all genes
-mat = as.matrix(assay(indata_base[row.names(top_1k_genes),],"log_cpm"))
-mat = t(scale(t(mat)))
-
-df=data.frame(Outcome=colData(indata_base)$"subjtype") 
-# 
-# df=df[order(df$BMI),]
-
-#o1 = seriate(dist(mat), method = "TSP")
-#o2 = seriate(dist(t(mat)), method = "TSP")
-
-ha = HeatmapAnnotation(df = df, col = list(Outcome=c("Failure"="Red","Control"="Blue")))
-
-Heatmap(mat,show_row_names=F,show_column_names = F, top_annotation = ha, cluster_columns = T )
-```
-
-
-
-```{r, eval=FALSE}
-
-
-
-mat <- as.matrix(assay(indata, "log_cpm"))
-bl_mat <- as.matrix(assay(indata, "log_cpm"))
-sig_bl_mat <- t(bl_mat[rownames(dfx),])
-
-df <- as.data.frame(colData(indata))
-
-df <- merge(df, sig_bl_mat, by = 'row.names', all=T)
-
-indata_bl <- indata
-colData(indata_bl) <- DataFrame(df)
-
-tx_status = data.frame(indata$subjtype)
-y <- data.frame()
-
-for (i in (rownames(t(sig_bl_mat)))){
-  scores = colData(indata_bl)[[i]]
-  pred = (prediction(scores, tx_status))
-  perf = performance(pred,"tpr","fpr")
-  auc = performance(pred,"auc")@'y.values'[[1]]
-  auc = max(auc, 1-auc)
-  
-  
-  tmp <- data.frame(i, auc)
-  y <- bind_rows(y, tmp)
-  
-}
-
-```
-
-## adding machine
-```{r, eval=FALSE}
-
-# 2-gene signatures
-x <- data.frame(rownames(mat))
-x$gene <- rep("LRRFIP1")
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-nnn <- paste("X", n, sep = "")
-
-names(m) <- nnn
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-```
-
-
-
-
-
-
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC),]
-
-round2 <- df[1:15,]
-
-# X31250 has the smallest pval and largest AUC
-l2 <- m[["X141"]]
-
-```
-
-
-## 3 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "WRAP73"
-x$gene2 <- "LRRFIP1"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC),]
-View(df)
-
-#X
-l3 <- m[["X30851"]]
-```
-
-## 4 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "PRR5-ARHGAP8"
-x$gene2 <- "WRAP73"
-x$gene3 <- "LRRFIP1"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC, -df$neg10xLog.P.value.),]
-View(df)
-
-#X
-l4 <- m[["X20744"]]
-
-```
-
-## 5 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "RN7SL288P"
-x$gene2 <- "PRR5-ARHGAP8"
-x$gene3 <- "WRAP73"
-x$gene4 <- "LRRFIP1"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC, -df$neg10xLog.P.value.),]
-View(df)
-
-#X
-#l5 <- m[["X27888"]]
-```
-
-## 5 genes
-```{r, eval=FALSE}
-x <- data.frame(rownames(mat))
-x$gene1 <- "AC124014.1"
-x$gene2 <- "RN7SL288P"
-x$gene3 <- "PRR5-ARHGAP8"
-x$gene4 <- "WRAP73"
-x$gene5 <- "LRRFIP1"
-
-l <- (asplit(x,1))
-l <- array_branch(l)
-m <- lapply(l, unlist)
-#m <- bind_cols(x)
-n <- as.character(1:31380)
-n <- paste("X", n, sep = "")
-
-names(m) <- n
-
-ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
-                               signatures = m, parallel.sz = 4)
-
-```
-
-#### AUC Table
-```{r, eval=FALSE, message = FALSE}
-set.seed(0)
-df <- tableAUC(ssgsea_res,
-         annotationColName = "subjtype",
-         signatureColNames = names(m),
-         num.boot = 100,
-         pb.show = FALSE,
-         output = "data.frame")
-
-df <- df[order(-df$AUC, -df$neg10xLog.P.value.),]
-View(df)
-
-#X
-l6 <- m[["X30103"]]
-
-#rownames.mat.         gene1         gene2         gene3 
-#      "RNF10"       "RREB1"        "PFKL"        "NADK" 
-#        gene4         gene5 
-#     "PIK3CD"       "CALCR" 
-
-#vanvalkenburg_6_bl <- c("AC008763.2", "AC106017.2", "BICD2", "AC016245.1", "BACH1-AS1", "ATP9A")
-
-#vanvalkenburg_6_all <- c("AC010889.2", "AC124014.1", "RN7SL288P", "PRR5-ARHGAP8", "WRAP73", "LRRFIP1")
-
-#vanvalkenburg_6_m2 <- c()
-
-
-
-#### also, instead of RNF10, LINC00472 or AL157384.1. Picked bc of protein coding
-```
-
-## m2 new-sig 
 
 
 
