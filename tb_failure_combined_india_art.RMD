@@ -23,7 +23,7 @@ suppressPackageStartupMessages({
   library(DESeq2)
   library(TBSignatureProfiler)
   library(DT)
-  library(enrichR)
+  #library(enrichR)
   library(Rtsne)
   library(umap)
   library(ggplot2)
@@ -84,11 +84,15 @@ g <- ggplot(embedding, aes(x=V1, y=V2, color=Class, shape = batch, label = colna
  #geom_text(aes(label=rownames(embedding), label.size = 0.10),hjust=0, vjust=0)
 
 plot(g)
-ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
-ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.svg", width=7, height=7)
 
 # remove temporary object
 rm(indata_tmp)
+```
+#### save
+```{r, include=FALSE}
+ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
+ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.svg", width=7, height=7)
+
 ```
 
 ## Batch correct on subjid and subjtype
@@ -2760,6 +2764,1088 @@ signatureGeneHeatmap(plage_res, useAssay="log_cpm",
 
 
 
+# Nutrition signatures
+```{r}
+nutsigs <- read_csv("data/Vitamin D signatures_unvalidated.csv")
+View(nutsigs)
+
+samp_tbsignatures <- list(Wang=nutsigs$Genes[1],
+                          Kim=nutsigs$Genes[2],
+                          Amin=nutsigs$Genes[3])
+samp_sigs <- lapply(samp_tbsignatures, str_split, "\\, ")
+samp_tbsignatures <- list(Wang=samp_sigs$Wang[[1]],
+                  Kim=samp_sigs$Kim[[1]],
+                  Amin=samp_sigs$Amin[[1]])
+
+
+gsva_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "GSVA",
+                             signatures = samp_tbsignatures, parallel.sz = 4)
+ssgsea_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
+                               signatures = samp_tbsignatures, parallel.sz = 4)
+
+plage_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PLAGE", signatures = samp_tbsignatures, parallel.sz = 4)
+```
+
+#### Boxplot- select sigs
+
+```{r base-ssgsea-boxplot-selectsigs}
+path <- file.path("outs/tbsigprofiler_outs/nutrition")
+#dir.create(path, recursive = T)
+select_tbsignatures <- samp_tbsignatures
+
+ssgsea_res_select <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "ssGSEA",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+ssgsea_res_select.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "ssGSEA",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+ssgsea_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "ssGSEA",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+gsva_res_select <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "GSVA",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+gsva_res_select.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "GSVA",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+gsva_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "GSVA",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+
+plage_res <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+
+plage_res_select <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res_select.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+plage_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "PLAGE",
+                               signatures = select_tbsignatures, parallel.sz = 4)
+
+
+
+signatureBoxplot(ssgsea_res_select, name="ssGSEA", 
+                 signatureColNames = names(select_tbsignatures),
+                 annotationColName = c("visit_type"), scale = TRUE,
+                 rotateLabels = T) + 
+               labs(fill = "Group") +
+               xlab(element_blank()) +
+               ylab("Score")
+
+
+ggsave(file.path(path,"ssGSEA/nutrition_sigs_alltimepoint_boxplots.svg"), width = 7, height=5)
+ggsave(file.path(path,"ssGSEA/nutrition_sigs_alltimepoint_boxplots.png"), width = 7, height=5)
+
+signatureBoxplot(gsva_res_select, name="GSVA", 
+                 signatureColNames = names(select_tbsignatures),
+                 annotationColName = c("visit_type"), scale = TRUE,
+                 rotateLabels = T) + 
+               labs(fill = "Group") +
+               xlab(element_blank()) +
+               ylab("Score")
+
+
+ggsave(file.path(path,"GSVA/nutrition_sigs_alltimepoint_boxplots.svg"), width = 7, height=5)
+ggsave(file.path(path,"GSVA/nutrition_sigs_alltimepoint_boxplots.png"), width = 7, height=5)
+
+signatureBoxplot(plage_res_select, name="PLAGE", 
+                 signatureColNames = names(select_tbsignatures),
+                 annotationColName = c("visit_type"), scale = TRUE,
+                 rotateLabels = T) + 
+               labs(fill = "Group") +
+               xlab(element_blank()) +
+               ylab("Score")
+
+
+ggsave(file.path(path,"PLAGE/nutrition_sigs_alltimepoint_boxplots.svg"), width = 7, height=5)
+ggsave(file.path(path,"PLAGE/nutrition_sigs_alltimepoint_boxplots.png"), width = 7, height=5)
+
+```
+
+#### Heatmaps
+```{r}
+# Wang
+png(file.path(path, "ssGSEA/nutrition_Wang_ssgsea_heatmap_bl.png"), pointsize = 8, width=4, height=4, res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Wang_ssgsea_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "ssGSEA/nutrition_Wang_ssgsea_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Wang_ssgsea_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## gsva
+png(file.path(path, "GSVA/nutrition_Wang_gsva_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Wang_gsva_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "GSVA/nutrition_Wang_gsva_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Wang_gsva_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## plage
+png(file.path(path, "PLAGE/nutrition_Wang_plage_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Wang_plage_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+print(signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE)) 
+dev.off()
+
+
+png(file.path(path, "PLAGE/nutrition_Wang_plage_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Wang_plage_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Wang"]],
+                     name = "Wang", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Wang"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+# Kim
+png(file.path(path, "ssGSEA/nutrition_Kim_ssgsea_heatmap_bl.png"), pointsize = 8, width=4, height=4, res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Kim_ssgsea_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "ssGSEA/nutrition_Kim_ssgsea_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Kim_ssgsea_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## gsva
+png(file.path(path, "GSVA/nutrition_Kim_gsva_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Kim_gsva_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "GSVA/nutrition_Kim_gsva_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Kim_gsva_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## plage
+png(file.path(path, "PLAGE/nutrition_Kim_plage_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Kim_plage_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+print(signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE)) 
+dev.off()
+
+
+png(file.path(path, "PLAGE/nutrition_Kim_plage_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Kim_plage_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Kim"]],
+                     name = "Kim", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Kim"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+# Amin
+png(file.path(path, "ssGSEA/nutrition_Amin_ssgsea_heatmap_bl.png"), pointsize = 8, width=4, height=4, res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Amin_ssgsea_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "ssGSEA/nutrition_Amin_ssgsea_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Amin_ssgsea_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## gsva
+png(file.path(path, "GSVA/nutrition_Amin_gsva_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Amin_gsva_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "GSVA/nutrition_Amin_gsva_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Amin_gsva_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## plage
+png(file.path(path, "PLAGE/nutrition_Amin_plage_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Amin_plage_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+print(signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE)) 
+dev.off()
+
+
+png(file.path(path, "PLAGE/nutrition_Amin_plage_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Amin_plage_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Amin"]],
+                     name = "Amin", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Amin"),
+                     showColumnNames = FALSE) 
+dev.off()
+```
+
+
+#### AUC tables
+##### BL
+```{r}
+set.seed(0)
+
+
+df <- tableAUC(ssgsea_res_select.bl,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+write.csv(df, file.path(path, "tbsigprofiler_selectsigs_AUC_boxplots_table_bl_ssGSEA.csv"))
+
+# PLAGE
+df <- tableAUC(plage_res_select.bl,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+write.csv(df, file.path(base_path, "PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_table_bl_PLAGE.csv"))
+
+# PLAGE, all sigs
+df <- tableAUC(plage_res.bl,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+write.csv(df, file.path(base_path, "PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_table_bl_PLAGE.csv"))
+
+```
+
+##### M2
+```{r}
+path.m2 <- file.path("outs/tbsigprofiler_outs/month2")
+set.seed(0)
+df <- tableAUC(ssgsea_res_select.m2,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+
+write.csv(df, file.path(path.m2, "ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_table_m2.csv"))
+
+df <- tableAUC(plage_res_select.m2,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+
+write.csv(df, file.path(path.m2, "PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_table_m2.csv"))
+
+
+```
+#### AUC Boxplots
+##### BL
+```{r}
+set.seed(0)
+compareBoxplots(ssgsea_res_select.bl, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(path,"tbsigprofiler_selectsigs_AUC_boxplots_bl.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res_select.bl, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(base_path,"PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_bl.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res.bl, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(base_path,"PLAGE/tbsigprofiler_AUC_boxplots_bl.svg"), width = 7, height=7)
+
+```
+
+##### M2
+```{r}
+set.seed(0)
+compareBoxplots(ssgsea_res_select.m2, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(path.m2,"ssGSEA/tbsigprofiler_selectsigs_AUC_boxplots_m2.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res_select.m2, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(path.m2,"PLAGE/tbsigprofiler_selectsigs_AUC_boxplots_m2.svg"), width = 7, height=7)
+
+compareBoxplots(plage_res.m2, annotationColName = "subjtype",
+                signatureColNames = names(select_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+ggsave(file.path(path.m2,"PLAGE/tbsigprofiler_AUC_boxplots_m2.svg"), width = 7, height=7)
+
+```
+
+#### ROC Plots
+#### functions
+```{r}
+sigroc <- function(inputData, annotationData, signatureColNames, annotationColName, 
+  scale = FALSE, choose_colors = c("cornflowerblue", "gray24"), 
+  name = "Signatures", nrow = NULL, ncol = NULL) 
+{
+  if (methods::is(inputData, "SummarizedExperiment")) {
+    if (any(duplicated(signatureColNames))) {
+      signatureColNames <- unique(signatureColNames)
+    }
+    if (!all(signatureColNames %in% colnames(SummarizedExperiment::colData(inputData)))) {
+      stop("Signature column name not found in inputData.")
+    }
+    if (!all(annotationColName %in% colnames(SummarizedExperiment::colData(inputData)))) {
+      stop("Annotation column name not found in inputData.")
+    }
+    annotationData <- data.frame(SummarizedExperiment::colData(inputData)[, 
+      annotationColName, drop = FALSE])
+    inputData <- data.frame(SummarizedExperiment::colData(inputData)[, 
+      signatureColNames, drop = FALSE])
+  }
+  else {
+    if (ncol(annotationData) != 1) {
+      stop("annotationData must have only one column.")
+    }
+    annotationColName <- colnames(annotationData)
+  }
+  if (length(annotationColName) != 1) {
+    stop("You must specify a single annotation column name with which\n    to create plots.")
+  }
+  if (!is.factor(annotationData[, 1])) {
+    annotationData[, 1] <- as.factor(annotationData[, 1])
+  }
+  if (nrow(annotationData) == nrow(inputData)) {
+    if (!all(rownames(annotationData) == rownames(inputData))) {
+      stop("Annotation data and signature data does not match.")
+    }
+  }
+  else if (nrow(annotationData) == ncol(inputData)) {
+    if (!all(rownames(annotationData) == colnames(inputData))) {
+      stop("Annotation data and signature data does not match.")
+    }
+    inputData <- t(inputData)
+  }
+  else {
+    stop("Annotation data and signature data does not match.")
+  }
+  pathwaydata <- t(inputData)
+  if (scale) {
+    pathwaydata <- t(scale(t(pathwaydata)))
+  }
+  inputdf <- data.frame(t(pathwaydata), Group = annotationData[, 
+    1])
+  plot_dat <- NULL
+  for (k in signatureColNames) {
+    pred <- ROCit::rocit(inputdf[, k], inputdf$Group)
+    plot_n <- as.data.frame(cbind(FPR = round(pred$FPR, 
+      4), TPR = round(pred$TPR, 4), Signature = k))
+    plot_dat <- rbind(plot_dat, plot_n)
+  }
+  plot_dat$Signature <- paste(plot_dat$Signature)
+  plot_dat$FPR <- as.numeric(paste(plot_dat$FPR))
+  plot_dat$TPR <- as.numeric(paste(plot_dat$TPR))
+  return(plot_dat)
+}
+
+bl <- sigroc(inputData = ssgsea_res_select.bl,
+                   signatureColNames = names(select_tbsignatures),
+                   annotationColName = "subjtype")
+bl$visit <- rep("Baseline")
+m2 <- sigroc(inputData = ssgsea_res_select.m2,
+                   signatureColNames = names(select_tbsignatures),
+                   annotationColName = "subjtype")
+m2$visit <- rep("Month 2")
+
+plot_dat <- bind_rows(bl, m2)
+
+theplot <- ggplot2::ggplot(data = plot_dat, aes(x = FPR, y = TPR, color=visit)) + 
+  ggplot2::geom_line(ggplot2::aes(x = FPR, 
+    y = TPR, color=visit), linewidth = 1) + 
+    ggplot2::facet_wrap(~Signature, scales = "free", nrow = 3, 
+      ncol = 3) + 
+  ggplot2::geom_abline(ggplot2::aes(intercept = 0, 
+    slope = 1, col = "gray24"), linewidth = 1, linetype = "dashed", 
+    show.legend = FALSE) + 
+  ggplot2::labs(x = "1-Specificity (FPR)", 
+    y = "Sensitivity (TPR)") + 
+    ggplot2::theme_classic() + 
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, 
+      hjust = 1))
+theplot
+
+ggsave(file.path(path, "tbsignatureprofiler_ROC_bl-m2.svg"), width=7, height=7)
+```
+
+##### BL
+```{r}
+signatureROCplot(inputData = ssgsea_res_select.bl,
+                   signatureColNames = names(select_tbsignatures),
+                   annotationColName = "subjtype")
+```
+
+##### M2
+```{r}
+signatureROCplot(inputData = ssgsea_res_select.m2,
+                   signatureColNames = names(select_tbsignatures),
+                   annotationColName = "subjtype")
+```
+
+
+### ssGSEA {.tabset}
+#### Bootstrap
+```{r}
+library(boot)
+library(pwr)
+
+ssgsea_df <- as.data.frame(colData(ssgsea_res))
+ssgsea_df <- ssgsea_df[,-c(1:3)]
+ssgsea_df <- ssgsea_df[,-c(2:24)]
+
+ssgsea_mx <- t(ssgsea_df[,-1])
+
+ssgsea_se <- SummarizedExperiment(assays=ssgsea_mx,
+                                  colData=colData(indata_base))
+names(assays(ssgsea_se)) <- "ssgsea"
+
+sds <-apply(assay(ssgsea_se,"ssgsea"),1,sd)
+summary(sds) 
+#   Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+#0.007625 0.015738 0.022883 0.027426 0.037734 0.066090 
+
+maxsd<-max(sds)
+minsd<-min(sds)
+meansd <- mean(sds)
+
+quants <- quantile(sds,c(0.015738 ,0.027426 ,0.037734 ))
+
+### Calculate power
+
+#21 controls 20 Failures
+sample_size=10
+alp = 0.0001
+
+avg <- power.t.test(n = sample_size, delta = NULL, sd = quants[2], sig.level = alp, power = .9, type ="two.sample", alternative = "two.sided") 
+large <- power.t.test(n = sample_size, delta = NULL, sd = quants[3], sig.level = alp, power = .9, type ="two.sample", alternative = "two.sided") 
+small <- power.t.test(n = sample_size, delta = NULL, sd = quants[1], sig.level = alp, power = .9, type ="two.sample", alternative = "two.sided") 
+
+small$delta
+#[1] 0.01033883
+avg$delta
+#[1] 0.01065506
+large$delta
+#[1] 0.01145412
+```
+#### Heatmap
+
+```{r base-ssgsea-heatmap}
+signatureHeatmap(ssgsea_res, name="ssGSEA", signatureColNames = names(samp_tbsignatures),
+                 annotationColNames = c("subjtype"),
+                 showColumnNames = FALSE, scale = TRUE,
+                 split_heatmap='none')
+```
+
+#### Boxplot
+
+```{r base-ssgsea-boxplot}
+signatureBoxplot(ssgsea_res, name="ssGSEA", signatureColNames = names(samp_tbsignatures),
+                 annotationColName = c("subjtype"), scale = TRUE) #rotateLabels = TRUE,
+```
+
+
+
+#### Boxplots Single {.tabset}
+
+```{r base-ssgsea-boxplot-ind, results="asis"}
+for (i in names(samp_tbsignatures)){
+
+  cat("#####", i, "\n")
+
+  print(signatureBoxplot(ssgsea_res, name=i, signatureColNames = i,
+                 annotationColName = c("subjtype"), rotateLabels = T))
+
+  cat("\n\n")
+}
+
+```
+
+#### Signature plots {.tabset}
+```{r base-ssgsea-sigplots, results="asis"}
+for (i in names(samp_tbsignatures)){
+
+  cat("#####", i, "\n")
+
+  signatureGeneHeatmap(ssgsea_res, useAssay="log_cpm",
+                     samp_tbsignatures[[i]],
+                     name = i, signatureColNames = NULL,
+                     annotationColNames = c("subjtype",i),
+                     showColumnNames = FALSE, 
+                     column_order =  NULL)
+
+  cat("\n\n")
+}
+
+```
+
+
+#### AUC Table
+```{r base-ssgsea-auctable, message = FALSE}
+set.seed(0)
+tableAUC(ssgsea_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE)
+```
+
+#### AUC Boxplots {.tabset}
+```{r base-ssgsea-auc-boxplot, message = FALSE}
+#svg(filename = "base-ssgsea-auc-boxplot.svg", pointsize = 8, width = 6.5, height = 3.8) 
+set.seed(0)
+compareBoxplots(ssgsea_res, annotationColName = "subjtype",
+                signatureColNames = names(samp_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+#dev.off()
+```
+
+#### AUC Boxplots, selected sigs {.tabset}
+```{r base-ssgsea-auc-boxplot, message = FALSE}
+
+out <- tableAUC(ssgsea_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE, 
+         output="data.frame")
+# Use dplyr::filter to only select rows with AUC > 0.6 on out object 
+# Pipe into a dplyr::select function to only select signames %>% unlist %>% unname
+# Save this as signatureColNames
+
+out <- out %>% 
+          filter(P.value<0.05) %>% 
+          select(Signature) %>% 
+          unlist() %>% 
+          unname()
+
+
+png(filename = file.path(path,"RePORT-ssgsea-auc-boxplot-bl.png"), pointsize = 8, width = 6.5, height = 3.8)
+set.seed(0)
+compareBoxplots(ssgsea_res, annotationColName = "subjtype",
+                signatureColNames = out,
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+dev.off()
+```
+
+
+#### ROC plots
+```{r base-ssgsea-roc, message = FALSE, fig.height = 9, fig.width = 12}
+signatureROCplot_CI(inputData = ssgsea_res,
+                   signatureColNames = names(samp_tbsignatures),
+                   annotationColName = "subjtype")
+
+```
+
+#### Separate ROC plots  {.tabset}
+
+```{r base-ssgsea-roc-ind, results = 'asis', message = FALSE}
+for (i in names(samp_tbsignatures)){
+
+  cat("#####", i, "\n")
+
+  print(signatureROCplot_CI(inputData = ssgsea_res,
+                   signatureColNames = i,
+                   annotationColName = "subjtype",
+                   name = paste("ROC plot,", i, sep = " ")))
+
+  cat("\n\n")
+}
+```
+
+
+### PLAGE {.tabset}
+```{r}
+
+```
+
+
+#### Heatmap
+
+```{r base-plage-cancer-heatmap}
+signatureHeatmap(plage_res, name="PLAGE", signatureColNames = names(samp_tbsignatures),
+                 annotationColNames = c("subjtype"),
+                 showColumnNames = FALSE,
+                 split_heatmap='none')
+```
+
+
+#### Boxplot
+
+```{r base-plage-cancer-boxplot}
+signatureBoxplot(plage_res, name="PLAGE", signatureColNames = names(samp_tbsignatures),
+                 annotationColName = c("subjtype"))# , rotateLabels = TRUE)
+```
+
+#### Boxplots Single {.tabset}
+
+```{r base-plage-cancer-boxplot-ind, results="asis"}
+for (i in names(samp_tbsignatures)){
+
+  cat("#####", i, "\n")
+
+  print(signatureBoxplot(plage_res,
+                         name=i, 
+                         signatureColNames = i,
+                         annotationColName = c("subjtype"),   
+                         ##violinPlot = TRUE,
+                         rotateLabels = T))
+
+  cat("\n\n")
+}
+
+```
+
+#### Signature plots {.tabset}
+```{r base-plage-cancer-sigplots, results="asis"}
+for (i in names(samp_tbsignatures)){
+
+  cat("#####", i, "\n")
+
+  signatureGeneHeatmap(plage_res, useAssay="log_cpm",
+                     samp_tbsignatures[[i]],
+                     name = i, signatureColNames = NULL,
+                     annotationColNames = c("subjtype",i),
+                     showColumnNames = FALSE, 
+                     column_order = NULL)
+
+  cat("\n\n")
+}
+
+```
+
+#### AUC Table {.tabset}
+```{r base-plage-cancer-auctable, message = FALSE}
+set.seed(0)
+tableAUC(plage_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE)
+
+out <- tableAUC(ssgsea_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE, 
+         output="data.frame")
+# Use dplyr::filter to only select rows with AUC > 0.6 on out object 
+# Pipe into a dplyr::select function to only select signames %>% unlist %>% unname
+# Save this as signatureColNames
+
+out <- out %>% 
+          filter(P.value<0.05) %>% 
+          select(Signature) %>% 
+          unlist() %>% 
+          unname()
+
+
+png(filename = file.path(path, "RePORT-ssgsea-auc-boxplot-bl.png"), pointsize = 8, width = 6.5, height = 3.8)
+set.seed(0)
+compareBoxplots(ssgsea_res, annotationColName = "subjtype",
+                signatureColNames = out,
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+dev.off()
+```
+
+#### AUC Boxplots
+```{r base-plage-cancer-auc-boxplot, message = FALSE}
+set.seed(0)
+compareBoxplots(plage_res, annotationColName = "subjtype",
+                signatureColNames = names(samp_tbsignatures),
+                pb.show = FALSE, fill.col = "blue",
+                rotateLabels = TRUE)
+
+```
+
+#### ROC plots
+```{r base-plage-cancer-roc, message = FALSE, fig.height = 9, fig.width = 12}
+signatureROCplot_CI(inputData = plage_res,
+                   signatureColNames = names(samp_tbsignatures),
+                   annotationColName = "subjtype")
+
+```
+
+#### Separate ROC plots  {.tabset}
+
+```{r base-plage-cancer-roc-ind, results = 'asis', message = FALSE}
+for (i in names(samp_tbsignatures)){
+
+  cat("#####", i, "\n")
+
+  print(signatureROCplot_CI(inputData = plage_res,
+                   signatureColNames = i,
+                   annotationColName = "subjtype",
+                   name = paste("ROC plot,", i, sep = " ")))
+
+  cat("\n\n")
+}
+```
+
+
+
+
+## TBSignatureProfiler M2
+```{r}
+assay <- "log_cpm"
+# samp_tbsignatures <- TBsignatures
+# 
+# 
+# samp_tbsignatures$'m0_gbm' <- c("MSLN", "NHSL2", "LRRFIP1", "SLC6A6")
+# samp_tbsignatures$'m1_drf' <- c("PBLD",
+#                                 "PLAGL1",
+#                                 "MSLN",
+#                                 "NHSL2",
+#                                 "TRBV5-1",
+#                                 "KIF1B",
+#                                 "H2BC20P",
+#                                 "HK2P1",
+#                                 "SSH1",
+#                                 "AC007686.3",
+#                                 "EP300",
+#                                 "AC024587.1",
+#                                 "PRSS51",
+#                                 "TRAPPC10" )
+# samp_tbsignatures$'m2_xrt' <- c("STAT3",
+#                                "PLEKHM3",
+#                                "LRRFIP1",
+#                                "AC009974.2",
+#                                "RREB1",
+#                                "RNASEL",
+#                                "SSH1",
+#                                "HELZ" ,
+#                                "PTGIS",
+#                                "AC003681.1",
+#                                "PLEK",
+#                                "ANKRD28",
+#                                "KIF13A",
+#                                "RAB11FIP1P1",
+#                                "IDS",
+#                                "ANO6")
+# 
+# samp_tbsignatures$Chendi_HIV_2 <- NULL
+# 
+
+
+
+
+
+gsva_res <- runTBsigProfiler(indata_m2,
+                             useAssay = assay, 
+                             algorithm = "GSVA",
+                             signatures = samp_tbsignatures)
+
+ssgsea_res <- runTBsigProfiler(indata_m2,
+                             useAssay = assay, 
+                             algorithm = "ssGSEA",
+                             signatures = samp_tbsignatures)
+
+plage_res <- runTBsigProfiler(indata_m2,
+                             useAssay = assay, 
+                             algorithm = "PLAGE",
+                             signatures = samp_tbsignatures)
+
+
+
+```
+
+
+
+#### AUC Table
+```{r, message = FALSE}
+set.seed(0)
+tableAUC(gsva_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE)
+```
+
+#### AUC Table
+```{r, message = FALSE}
+set.seed(0)
+x <- tableAUC(ssgsea_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+View(x)
+#write.csv(x, "m2_test_AUC_ssgsea.csv")
+```
+
+#### AUC Table
+```{r, message = FALSE}
+set.seed(0)
+x <- tableAUC(plage_res,
+         annotationColName = "subjtype",
+         signatureColNames = names(samp_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+View(x)
+#write.csv(x, "m2_test_AUC_plage.csv")
+```
+
+#### ROC plots (ind)
+```{r}
+
+for (i in names(samp_tbsignatures)){
+
+  cat("#####", i, "\n")
+
+  print(signatureROCplot(inputData = plage_res,
+                   signatureColNames = i ,
+                   annotationColName = "subjtype",
+                   name = paste("ROC plot,", i, sep = " ")))
+
+  cat("\n\n")
+}
+
+svg("FAIL4_roc_plage_m2.svg")
+signatureROCplot(inputData = plage_res,
+                   signatureColNames = "VanValkenburg_FAIL_4" ,
+                   annotationColName = "subjtype",
+                   name = paste("ROC plot,", "VanValkenburg_FAIL_4", sep = " "))
+dev.off()
+
+svg("FAIL14_roc_plage_m2.svg")
+signatureROCplot(inputData = plage_res,
+                   signatureColNames = "VanValkenburg_FAIL_14" ,
+                   annotationColName = "subjtype",
+                   name = paste("ROC plot,", "VanValkenburg_FAIL_14", sep = " "))
+dev.off()
+
+```
+
+#### Boxplot ssGSEA
+
+```{r}
+
+
+
+#svg("tb_fail_boxplot_ssgsea_m2.svg")
+signatureBoxplot(ssgsea_res, name="ssGSEA", signatureColNames = names(select_tbsignatures),
+                 annotationColName = c("subjtype"))# , rotateLabels = TRUE)
+#dev.off()
+```
+
+#### Boxplot PLAGE
+```{r}
+png("tb_fail_boxplot_plage_m2.png")
+signatureBoxplot(plage_res, name="PLAGE", signatureColNames = names(select_tbsignatures),
+                 annotationColName = c("subjtype"))# , rotateLabels = TRUE)
+dev.off()
+```
+
+
+#### Heatmap of signature
+```{r}
+png("tbfail_m2xrt_ssgsea_heatmap_m2.png", pointsize = 8)
+signatureGeneHeatmap(ssgsea_res, useAssay="log_cpm",
+                     samp_tbsignatures[["m2_xrt"]],
+                     name = "m2_xrt", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "m2_xrt"),
+                     showColumnNames = FALSE)
+dev.off()
+```
+
+```{r}
+#png("tbfail_m0gbm_plage_heatmap_m2.png", pointsize = 8)
+signatureGeneHeatmap(plage_res, useAssay="log_cpm",
+                     samp_tbsignatures[["m0_gbm"]],
+                     name = "m0_gbm", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "m0_gbm"),
+                     showColumnNames = FALSE)
+#dev.off()
+```
 
 
 
