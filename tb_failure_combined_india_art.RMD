@@ -89,9 +89,9 @@ plot(g)
 rm(indata_tmp)
 ```
 #### save
-```{r, include=FALSE}
-ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
-ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.svg", width=7, height=7)
+```{r=}
+# ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.png", width=7, height=7)
+# ggsave("outs/dimension_reduction/batchcorrect_plots/tb_fail_umap_log_counts_pre-batch-corrected.svg", width=7, height=7)
 
 ```
 
@@ -494,15 +494,13 @@ ssgsea_res_select.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algo
 ssgsea_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "ssGSEA",
                                signatures = select_tbsignatures, parallel.sz = 4)
 
-plage_res <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "PLAGE",
+plage_res_select <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "PLAGE",
                                signatures = select_tbsignatures, parallel.sz = 4)
 plage_res.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PLAGE",
                                signatures = select_tbsignatures, parallel.sz = 4)
 plage_res.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "PLAGE",
                                signatures = select_tbsignatures, parallel.sz = 4)
 
-plage_res_select <- runTBsigProfiler(indata, useAssay = "log_cpm", algorithm = "PLAGE",
-                               signatures = select_tbsignatures, parallel.sz = 4)
 plage_res_select.bl <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "PLAGE",
                                signatures = select_tbsignatures, parallel.sz = 4)
 plage_res_select.m2 <- runTBsigProfiler(indata_m2, useAssay = "log_cpm", algorithm = "PLAGE",
@@ -2120,7 +2118,7 @@ svg(file.path(path,"tbfail_plage_boxplot_selectsig.svg"), pointsize = 8)
 signatureBoxplot(plage_res, 
                  name="PLAGE", 
                  signatureColNames = names( select_tbsignatures),
-                 annotationColName = c("group"))# , rotateLabels = TRUE)
+                 annotationColName = c("visit_type"))# , rotateLabels = TRUE)
 dev.off()
 ```
 
@@ -2766,7 +2764,42 @@ signatureGeneHeatmap(plage_res, useAssay="log_cpm",
 
 # Nutrition signatures
 ```{r}
-nutsigs <- read_csv("data/Vitamin D signatures_unvalidated.csv")
+nutsigs <- readr::read_csv("data/Vitamin D signatures_unvalidated.csv")
+Vitamin_D_Aigner_35 = c("CD24", 
+                          "CDH1", 
+                          "CDH11",
+                          "CDH3", 
+                          "CDH4", 
+                          "CLDN7", 
+                          "CRB3", 
+                          "CXADR",
+                          "DMKN", 
+                          "DSC2", 
+                          "DSP", 
+                          "EPCAM",
+                          "EPPK1", 
+                          "F11R", 
+                          "GJB2", 
+                          "GJB3",
+                          "MAL2", 
+                          "MARVELD2", 
+                          "MPZL2", 
+                          "MUC1", 
+                          "OCLN", 
+                          "PATJ", 
+                          "PCDH7",
+                          "PKP3",
+                          "PMEPA1",
+                          "PPL",
+                          "SCEL", 
+                          "SFN", 
+                          "SH3YL1",
+                          "SHROOM3", 
+                          "SYTL1",
+                         "TACSTD2",
+                         "TMEM30B", 
+                         "TSPAN1", 
+                         "TSPAN15")
 View(nutsigs)
 
 samp_tbsignatures <- list(Wang=nutsigs$Genes[1],
@@ -2776,6 +2809,7 @@ samp_sigs <- lapply(samp_tbsignatures, str_split, "\\, ")
 samp_tbsignatures <- list(Wang=samp_sigs$Wang[[1]],
                   Kim=samp_sigs$Kim[[1]],
                   Amin=samp_sigs$Amin[[1]])
+samp_tbsignatures$Vitamin_D_Aigner_35 <- Vitamin_D_Aigner_35
 
 
 gsva_res <- runTBsigProfiler(indata_base, useAssay = "log_cpm", algorithm = "GSVA",
@@ -2860,6 +2894,62 @@ ggsave(file.path(path,"PLAGE/nutrition_sigs_alltimepoint_boxplots.png"), width =
 
 ```
 
+#### Kim signature only
+```{r}
+TBSignatureProfiler::signatureBoxplot(ssgsea_res_select,
+                                     name = "Kim", 
+                                     signatureColNames = "Kim", 
+                                     annotationColName = "visit_type", rotateLabels = T) + 
+               labs(fill = "Group") +
+               xlab(element_blank()) +
+               ylab("Score")
+ggsave(file.path(path,"ssGSEA/KIM_nutrition_sigs_alltimepoint_boxplots.png"), width = 5, height=5)
+
+
+df.bl <- TBSignatureProfiler::tableAUC(ssgsea_res_select.bl,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+
+df.m2 <- TBSignatureProfiler::tableAUC(ssgsea_res_select.m2,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+
+                                    
+```
+#### Vitamin_D_Aigner_35 signature only
+```{r}
+TBSignatureProfiler::signatureBoxplot(ssgsea_res_select,
+                                     name = "Vitamin_D_Aigner_35", 
+                                     signatureColNames = "Vitamin_D_Aigner_35", 
+                                     annotationColName = "visit_type", rotateLabels = T) + 
+               labs(fill = "Group") +
+               xlab(element_blank()) +
+               ylab("Score")
+ggsave(file.path(path,"ssGSEA/Vitamin_D_Aigner_35_nutrition_sigs_alltimepoint_boxplots.png"), width = 5, height=5)
+
+
+df.bl <- TBSignatureProfiler::tableAUC(ssgsea_res_select.bl,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+
+df.m2 <- TBSignatureProfiler::tableAUC(ssgsea_res_select.m2,
+         annotationColName = "subjtype",
+         signatureColNames = names(select_tbsignatures),
+         num.boot = 100,
+         pb.show = FALSE,
+         output = "data.frame")
+
+                                    
+```
 #### Heatmaps
 ```{r}
 # Wang
@@ -3150,6 +3240,103 @@ signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
                      showColumnNames = FALSE) 
 dev.off()
 ```
+```{r}
+# Vitamin_D_Aigner_35
+png(file.path(path, "ssGSEA/nutrition_Vitamin_D_Aigner_35_ssgsea_heatmap_bl.png"), pointsize = 8, width=4, height=4, res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Vitamin_D_Aigner_35_ssgsea_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "ssGSEA/nutrition_Vitamin_D_Aigner_35_ssgsea_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "ssGSEA/nutrition_Vitamin_D_Aigner_35_ssgsea_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(ssgsea_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## gsva
+png(file.path(path, "GSVA/nutrition_Vitamin_D_Aigner_35_gsva_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Vitamin_D_Aigner_35_gsva_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+
+png(file.path(path, "GSVA/nutrition_Vitamin_D_Aigner_35_gsva_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "GSVA/nutrition_Vitamin_D_Aigner_35_gsva_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(gsva_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+
+## plage
+png(file.path(path, "PLAGE/nutrition_Vitamin_D_Aigner_35_plage_heatmap_bl.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Vitamin_D_Aigner_35_plage_heatmap_bl.svg"), pointsize = 8, width=4, height=4)
+print(signatureGeneHeatmap(plage_res_select.bl, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE)) 
+dev.off()
+
+
+png(file.path(path, "PLAGE/nutrition_Vitamin_D_Aigner_35_plage_heatmap_m2.png"), pointsize = 8, width=4, height=4,res=300, units="in")
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+svg(file.path(path, "PLAGE/nutrition_Vitamin_D_Aigner_35_plage_heatmap_m2.svg"), pointsize = 8, width=4, height=4)
+signatureGeneHeatmap(plage_res_select.m2, useAssay="log_cpm",
+                     samp_tbsignatures[["Vitamin_D_Aigner_35"]],
+                     name = "Vitamin_D_Aigner_35", signatureColNames = NULL,
+                     annotationColNames = c("subjtype", "Vitamin_D_Aigner_35"),
+                     showColumnNames = FALSE) 
+dev.off()
+```
 
 
 #### AUC tables
@@ -3233,6 +3420,10 @@ compareBoxplots(plage_res.bl, annotationColName = "subjtype",
 ggsave(file.path(base_path,"PLAGE/tbsigprofiler_AUC_boxplots_bl.svg"), width = 7, height=7)
 
 ```
+
+
+
+
 
 ##### M2
 ```{r}
@@ -3848,6 +4039,44 @@ signatureGeneHeatmap(plage_res, useAssay="log_cpm",
 ```
 
 
+# Kiloni's signature
+```{r}
+nutsigs$Vitamin_D_Aigner_35 = c("CD24", 
+                          "CDH1", 
+                          "CDH11",
+                          "CDH3", 
+                          "CDH4", 
+                          "CLDN7", 
+                          "CRB3", 
+                          "CXADR",
+                          "DMKN", 
+                          "DSC2", 
+                          "DSP", 
+                          "EPCAM",
+                          "EPPK1", 
+                          "F11R", 
+                          "GJB2", 
+                          "GJB3",
+                          "MAL2", 
+                          "MARVELD2", 
+                          "MPZL2", 
+                          "MUC1", 
+                          "OCLN", 
+                          "PATJ", 
+                          "PCDH7",
+                          "PKP3",
+                          "PMEPA1",
+                          "PPL",
+                          "SCEL", 
+                          "SFN", 
+                          "SH3YL1",
+                          "SHROOM3", 
+                          "SYTL1",
+                         "TACSTD2",
+                         "TMEM30B", 
+                         "TSPAN1", 
+                         "TSPAN15")
+```
 
 
 # Session Info
